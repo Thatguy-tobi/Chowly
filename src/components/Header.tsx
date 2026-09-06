@@ -92,7 +92,7 @@ export function Header() {
                 onClick={() => setOpen((o) => !o)}
                 aria-expanded={open}
                 aria-haspopup="listbox"
-                className="flex w-full items-center gap-1 truncate rounded-full px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-surface-sunken"
+                className="flex min-h-9 w-full items-center gap-1 truncate rounded-full px-2.5 text-left text-sm text-ink-soft transition hover:bg-surface-sunken"
               >
                 <span className="truncate">{current?.name ?? "Choose restaurant"}</span>
                 <span aria-hidden className="text-xs text-ink-faint">
@@ -143,7 +143,10 @@ export function Header() {
                   role="tab"
                   aria-selected={session.role === role}
                   onClick={() => switchRole(role)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium capitalize transition ${
+                  // min-h-9 keeps this comfortably tappable on a phone. It is
+                  // the control requirement 6 is judged on, and at the old
+                  // 28px it was below the size a thumb reliably hits.
+                  className={`min-h-9 rounded-full px-3.5 text-xs font-medium capitalize transition ${
                     session.role === role
                       ? "bg-surface-raised text-ink shadow-sm"
                       : "text-ink-faint hover:text-ink-soft"

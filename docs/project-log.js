@@ -480,6 +480,20 @@ children.push(
         "A defect found in testing, recorded because the brief asks for an honest history. Switching restaurant cleared the table number but left the customer inside a menu they could no longer order from, and the failure surfaced as a raw validation message — “expected number, received null”. A customer at a new restaurant is at a new table, so they now return to the entry screen to be seated, with that restaurant already selected. The basket goes with them: it held another kitchen's dishes, which this one cannot cook. Any basket whose restaurant no longer matches the session is treated as empty.",
         "Confirmed",
       ],
+      [
+        "020",
+        "7 Sep 2026",
+        "The repository is public",
+        "Deliverable 1 is the repository itself, so it has to open for whoever is marking it. A private repository depends on every facilitator having been invited individually and having accepted, and if that fails the deliverable simply cannot be read. Public removes that dependency. Nothing in the repository is secret: the connection strings live in an untracked .env file, and .env.example carries only the shape of them.",
+        "Confirmed",
+      ],
+      [
+        "021",
+        "7 Sep 2026",
+        "Seeded dates are anchored to the day the data is generated, and orders still in flight are pulled to the present",
+        "Nine orders were dated up to two days in the future, because the generator counted forward from a hardcoded 1 September that the calendar had since overtaken. Every arithmetic check passed over it: the rows were consistent with each other, just not with today. Two further faults surfaced from the same investigation — seven staff were employed months after orders they had already served, and four orders still in the kitchen carried customer ratings, one a two-star complaint about food that had not arrived. Orders that are still being prepared are now dated within the last hour, so the waiter's queue shows live work rather than tables that have supposedly waited a week. The generator and the verification script both refuse to accept any of these three faults again.",
+        "Confirmed",
+      ],
     ],
     { statusCol: 4, boldCol: 0 }
   )
@@ -594,7 +608,7 @@ children.push(
 // 8. Open questions
 children.push(H1("8. Open questions"));
 children.push(P("Still outstanding. Resolved questions move into the change log in section 4 with the reason attached."));
-children.push(Bullet("Should the repository be public, or private with the facilitators invited? A private repository they cannot open would fail deliverable 1."));
+children.push(Bullet("None outstanding. Every question raised so far has been resolved and recorded in section 4."));
 
 // ---------- document ----------
 const doc = new Document({
