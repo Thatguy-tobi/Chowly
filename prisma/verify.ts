@@ -38,12 +38,22 @@ async function main() {
     payments: await prisma.payment.count(),
   };
 
+  const now = new Date();
+
   console.log("Row counts in Postgres:");
   for (const [k, v] of Object.entries(counts)) {
     console.log(`  ${k.padEnd(14)} ${String(v).padStart(4)}`);
   }
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   console.log(`  ${"TOTAL".padEnd(14)} ${String(total).padStart(4)}\n`);
+
+  // An empty database passes every rule below, because a rule about orders is
+  // silent when there are no orders. This script once reported "All checks
+  // passed" against a database that had just been dropped and not reseeded,
+  // which is the most misleading thing it could possibly have said.
+  for (const [name, n] of Object.entries(counts)) {
+    check(n > 0, `there are no ${name} at all — the database is not seeded`);
+  }
 
   const orders = await prisma.customerOrder.findMany({
     include: {
@@ -118,13 +128,34 @@ async function main() {
       }
     }
 
-    // feedback belongs to the customer who placed the order
+    // Nothing may be dated ahead of now. Seeded orders once ran days into the
+    // future because the generator used a fixed start date that the calendar
+    // eventually overtook.
+    check(o.orderDate <= now, `${o.reference} is dated in the future`);
+    if (o.servedAt) check(o.servedAt <= now, `${o.reference} was served in the future`);
+
+    // Nobody can have handled an order before their first day at work.
+    if (o.waiter) {
+      check(o.waiter.employmentDate <= o.orderDate, `${o.reference}: waiter was hired after the order`);
+    }
+    if (o.preparation?.chef) {
+      check(o.preparation.chef.employmentDate <= o.orderDate, `${o.reference}: chef was hired after the order`);
+    }
+    if (o.preparation?.bartender) {
+      check(o.preparation.bartender.employmentDate <= o.orderDate, `${o.reference}: bartender was hired after the order`);
+    }
+
+    // feedback belongs to the customer who placed the order, and only exists
+    // once there is a meal to have an opinion about
+    const served = o.status === "SERVED" || o.status === "PAID";
     for (const c of o.complaints) {
       check(c.customerId === o.customerId, `${o.reference}: complaint filed by another customer`);
+      check(served, `${o.reference} is ${o.status} but already has a complaint against it`);
     }
     if (o.rating) {
       check(o.rating.customerId === o.customerId, `${o.reference}: rating given by another customer`);
       check(o.rating.value >= 1 && o.rating.value <= 5, `${o.reference}: rating out of range`);
+      check(served, `${o.reference} is ${o.status} but has already been rated`);
     }
   }
 
