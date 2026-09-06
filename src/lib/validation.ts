@@ -15,7 +15,13 @@ export const createCustomerSchema = z.object({
 export const createOrderSchema = z.object({
   customerId: z.string().min(1),
   restaurantId: z.string().min(1),
-  tableNumber: z.number().int().min(1).max(200),
+  // The message matters: without it a missing table number surfaces to the
+  // customer as "expected number, received null".
+  tableNumber: z
+    .number({ error: "We need your table number before the order can be sent" })
+    .int()
+    .min(1, "Table number must be 1 or more")
+    .max(200),
   items: z
     .array(
       z.object({

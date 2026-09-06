@@ -27,6 +27,12 @@ export default function CartPage() {
   }, [ready, session.customer.customerId, router]);
 
   async function placeOrder() {
+    // Caught here rather than at the API, so the customer gets a sentence they
+    // can act on instead of a validation error about a null.
+    if (!session.customer.tableNumber) {
+      setError("We do not have your table number. Tap “Add more” and set it before ordering.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
@@ -52,9 +58,15 @@ export default function CartPage() {
 
   if (!ready) return null;
 
+  // A basket belonging to a restaurant the customer has since left cannot be
+  // ordered — that kitchen does not have these dishes. Treated as empty rather
+  // than letting it fail at the API.
+  const stale =
+    cart.restaurantId !== null && cart.restaurantId !== session.customer.restaurantId;
+
   // `busy` matters here: placing an order empties the cart and then navigates,
   // and without this guard the empty state flashes up during the hand-off.
-  if (cart.count === 0 && !busy) {
+  if ((cart.count === 0 || stale) && !busy) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-8">
         <EmptyState

@@ -63,8 +63,13 @@ type SessionContextValue = {
   /** The restaurant the CURRENT role is looking at. */
   restaurantId: string | null;
   setRole: (role: Role) => void;
-  /** Sets the restaurant for the current role only. */
-  setRestaurant: (restaurantId: string) => void;
+  /**
+   * Sets the restaurant for one role. Defaults to the role currently active,
+   * but callers that are about to switch role must say which one they mean —
+   * otherwise choosing a restaurant "as the waiter" from the landing page
+   * would silently overwrite the customer's, and clear their table with it.
+   */
+  setRestaurant: (restaurantId: string, forRole?: Role) => void;
   setCustomer: (details: { customerId: string; name: string; tableNumber: number; restaurantId: string }) => void;
   reset: () => void;
 };
@@ -115,14 +120,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const setRestaurant = useCallback((restaurantId: string) => {
-    setSession((s) =>
-      s.role === "waiter"
+  const setRestaurant = useCallback((restaurantId: string, forRole?: Role) => {
+    setSession((s) => {
+      const role = forRole ?? s.role;
+      return role === "waiter"
         ? { ...s, waiter: { restaurantId } }
         : // Moving to a different restaurant means a different table, so the
           // seated details no longer apply. The customer record itself is kept.
-          { ...s, customer: { ...s.customer, restaurantId, tableNumber: null } }
-    );
+          // Whoever calls this must then send the customer back to be seated —
+          // an order cannot be placed without a table number.
+          { ...s, customer: { ...s.customer, restaurantId, tableNumber: null } };
+    });
   }, []);
 
   const setCustomer = useCallback(

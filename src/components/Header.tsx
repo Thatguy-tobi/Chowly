@@ -19,7 +19,7 @@ type Restaurant = { id: string; name: string; address: string };
  */
 export function Header() {
   const { session, ready, restaurantId, setRole, setRestaurant } = useSession();
-  const { count } = useCart();
+  const { count, clear: clearCart } = useCart();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -59,8 +59,16 @@ export function Header() {
   function chooseRestaurant(id: string) {
     setRestaurant(id);
     setOpen(false);
-    if (session.role === "waiter") router.push("/waiter");
-    else router.push("/menu");
+    if (session.role === "waiter") {
+      router.push("/waiter");
+    } else {
+      // A customer moving to another restaurant is sitting at a different
+      // table, so they go back to be seated rather than into a menu they
+      // cannot actually order from. Their basket goes too — it is full of
+      // another restaurant's dishes, which this kitchen cannot cook.
+      if (id !== session.customer.restaurantId) clearCart();
+      router.push("/");
+    }
   }
 
   // Nothing meaningful to show until the stored session has been read, and

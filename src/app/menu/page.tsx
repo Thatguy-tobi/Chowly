@@ -45,7 +45,9 @@ export default function MenuPage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (!restaurantId || !session.customer.customerId) {
+    // A table number is as necessary as a customer here — without one the
+    // order cannot be placed and the waiter would not know where to take it.
+    if (!restaurantId || !session.customer.customerId || !session.customer.tableNumber) {
       router.replace("/");
       return;
     }
@@ -58,7 +60,7 @@ export default function MenuPage() {
       })
       .then(setMenu)
       .catch((e) => setError(e.message));
-  }, [ready, restaurantId, session.customer.customerId, router]);
+  }, [ready, restaurantId, session.customer.customerId, session.customer.tableNumber, router]);
 
   if (!ready || (!menu && !error)) return <Spinner label="Loading the menu" />;
   if (error) {

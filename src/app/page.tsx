@@ -82,7 +82,10 @@ export default function LandingPage() {
 
   function enterAsWaiter() {
     if (!chosen) return;
-    setRestaurant(chosen);
+    // Explicitly "for the waiter" — without that this would set the restaurant
+    // on the customer side, which is the role still active at this moment, and
+    // clear their table number as a side effect.
+    setRestaurant(chosen, "waiter");
     setRole("waiter");
     router.push("/waiter");
   }
