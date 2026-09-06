@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { naira, minutes, staffName, dateAndTime } from "@/lib/format";
+import { naira, staffName, dateAndTime } from "@/lib/format";
 import { OrderProgress } from "@/components/OrderProgress";
 import {
   Badge,
