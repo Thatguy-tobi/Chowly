@@ -1,0 +1,332 @@
+// Chowly — data model
+//
+// This schema implements the model designed in Assignment 1. All twelve entities
+// are present under the same names and with the same relationships. Where the
+// build forced a change, the change is marked CHANGE nnn and justified in the
+// project log (section 4 of "Chowly - Project Log.docx").
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// CHANGE 016 — Prisma 7 no longer accepts connection URLs in the schema. The
+// URL used by migrations now lives in prisma.config.ts, and the running
+// application connects through a driver adapter (see src/lib/prisma.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enumerations
+//
+// The submitted model stored these as free text. They are enums here so the
+// database itself rejects a value the application does not understand.
+// ---------------------------------------------------------------------------
+
+enum StaffRole {
+  WAITER
+  CHEF
+  BARTENDER
+}
+
+enum CategoryType {
+  FOOD
+  DRINK
+}
+
+/// CHANGE 007 — the submitted model had a free-text status showing values such
+/// as "Preparing" and "Completed". The story needs a defined lifecycle: an
+/// order is placed, a waiter records who prepared it, it is served, and it is
+/// paid for just before the customer leaves.
+enum OrderStatus {
+  PLACED
+  PREPARING
+  SERVED
+  PAID
+}
+
+enum ComplaintStatus {
+  OPEN
+  RESOLVED
+}
+
+enum PaymentMethod {
+  CARD
+  BANK_TRANSFER
+  CASH
+}
+
+enum PaymentStatus {
+  SUCCESSFUL
+  FAILED
+  PENDING
+}
+
+// ---------------------------------------------------------------------------
+// Entities
+// ---------------------------------------------------------------------------
+
+/// Keeps records of restaurants using Chowly.
+model Restaurant {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  phone       String
+  email       String
+  /// CHANGE 011 — opening and closing hours are stored as "HH:mm" strings
+  /// rather than timestamps. They describe a time of day that repeats, not a
+  /// moment in time, and storing them as timestamps invited timezone bugs for
+  /// no benefit.
+  openingTime String
+  closingTime String
+  createdAt   DateTime @default(now())
+
+  staff  Staff[]
+  menus  Menu[]
+  orders CustomerOrder[]
+
+  @@map("restaurants")
+}
+
+/// Keeps records of customers who visit restaurants and use Chowly.
+model Customer {
+  id String @id @default(cuid())
+
+  firstName String
+  /// CHANGE 012 — surname, phone and email are optional. There is no login, and
+  /// a customer sitting at a table gives a first name and a table number and
+  /// nothing more. Requiring the rest would mean inventing data.
+  lastName  String?
+  phone     String?
+  email     String?
+
+  registrationDate DateTime @default(now())
+
+  orders     CustomerOrder[]
+  complaints Complaint[]
+  ratings    Rating[]
+
+  @@map("customers")
+}
+
+/// Keeps records of restaurant employees — waiters, chefs and bartenders.
+model Staff {
+  id             String    @id @default(cuid())
+  restaurantId   String
+  firstName      String
+  lastName       String
+  phone          String?
+  role           StaffRole
+  employmentDate DateTime  @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  ordersAsWaiter          CustomerOrder[]    @relation("OrderWaiter")
+  preparationsAsChef      OrderPreparation[] @relation("PreparationChef")
+  preparationsAsBartender OrderPreparation[] @relation("PreparationBartender")
+
+  @@index([restaurantId, role])
+  @@map("staff")
+}
+
+/// Classifies menu items as food or drink.
+model Category {
+  id        String       @id @default(cuid())
+  name      String
+  type      CategoryType
+  /// Controls the order categories appear in on the menu screen.
+  sortOrder Int          @default(0)
+
+  items MenuItem[]
+
+  @@map("categories")
+}
+
+/// Keeps records of restaurant menus.
+model Menu {
+  id           String   @id @default(cuid())
+  restaurantId String
+  name         String
+  description  String?
+  /// CHANGE 013 — the submitted model held a text status of "Active". A menu is
+  /// either in use or it is not, so this is a boolean.
+  isActive     Boolean  @default(true)
+  createdDate  DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      MenuItem[]
+
+  @@map("menus")
+}
+
+/// Keeps records of individual food and drink items available to customers.
+model MenuItem {
+  id          String  @id @default(cuid())
+  menuId      String
+  categoryId  String
+  name        String
+  description String?
+  price       Decimal @db.Decimal(10, 2)
+
+  /// CHANGE 001 — the brief requires every item to carry a name, a price and a
+  /// preparation time. The submitted model had no preparation time, and without
+  /// it the waiting time shown to the customer cannot be derived from the order.
+  preparationTimeMinutes Int
+
+  isAvailable Boolean @default(true)
+
+  /// CHANGE 014 — a small illustrative glyph per item, so the menu reads as a
+  /// menu rather than a table of rows. Presentation only; nothing depends on it.
+  emoji String?
+
+  menu       Menu        @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+
+  @@index([menuId])
+  @@index([categoryId])
+  @@map("menu_items")
+}
+
+/// Keeps records of orders placed by customers.
+model CustomerOrder {
+  id String @id @default(cuid())
+
+  /// CHANGE 015 — a short human-readable reference such as "ORD-0007", shown to
+  /// the customer and used by the waiter to identify an order out loud. The
+  /// primary key is a cuid and is not something anyone can read back.
+  reference String @unique
+
+  customerId   String
+  restaurantId String
+  /// Nullable until a waiter is assigned.
+  waiterId     String?
+
+  /// CHANGE 006 — the submitted model records who ordered but not where they
+  /// are sitting. Without a login the table number is what lets a waiter carry
+  /// the food to the right place.
+  tableNumber Int
+
+  status    OrderStatus @default(PLACED)
+  orderDate DateTime    @default(now())
+
+  /// Minutes, computed at placement from the preparation times of the items.
+  estimatedWaitTime Int
+  orderTotal        Decimal @db.Decimal(10, 2)
+
+  servedAt DateTime?
+
+  customer    Customer          @relation(fields: [customerId], references: [id])
+  restaurant  Restaurant        @relation(fields: [restaurantId], references: [id])
+  waiter      Staff?            @relation("OrderWaiter", fields: [waiterId], references: [id])
+  items       OrderItem[]
+  preparation OrderPreparation?
+  complaints  Complaint[]
+  rating      Rating?
+  payment     Payment?
+
+  @@index([restaurantId, status])
+  @@index([customerId])
+  @@map("customer_orders")
+}
+
+/// Bridge entity resolving the many-to-many relationship between orders and
+/// menu items. The composite primary key is carried over from the submitted
+/// model unchanged.
+model OrderItem {
+  orderId   String
+  itemId    String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  order CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item  MenuItem      @relation(fields: [itemId], references: [id])
+
+  @@id([orderId, itemId])
+  @@map("order_items")
+}
+
+/// Records which chef and which bartender prepared an order.
+model OrderPreparation {
+  id String @id @default(cuid())
+
+  /// CHANGE 009 — unique, enforcing the 1:1 the Relationships sheet declares.
+  /// Without it the database would allow an order two preparation records.
+  orderId String @unique
+
+  /// CHANGE 008 — chef and bartender are both optional. An order of drinks only
+  /// has no chef and an order of food only has no bartender, so requiring both
+  /// would make the waiter invent one.
+  chefId      String?
+  bartenderId String?
+
+  preparationStart DateTime?
+  preparationEnd   DateTime?
+
+  order     CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  chef      Staff?        @relation("PreparationChef", fields: [chefId], references: [id])
+  bartender Staff?        @relation("PreparationBartender", fields: [bartenderId], references: [id])
+
+  @@map("order_preparations")
+}
+
+/// Keeps records of complaints submitted by customers about orders.
+model Complaint {
+  id            String          @id @default(cuid())
+  orderId       String
+  customerId    String
+  complaintText String
+  complaintDate DateTime        @default(now())
+  status        ComplaintStatus @default(OPEN)
+
+  order    CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer Customer      @relation(fields: [customerId], references: [id])
+
+  @@index([orderId])
+  @@map("complaints")
+}
+
+/// Keeps records of customer ratings and comments for orders.
+model Rating {
+  id String @id @default(cuid())
+
+  /// CHANGE 009 — unique, enforcing the 1:0..1 the Relationships sheet declares:
+  /// an order may have one rating, not several.
+  orderId String @unique
+
+  customerId String
+  /// 1 to 5. Range is checked in the application before it reaches here.
+  value      Int
+  comment    String?
+  ratingDate DateTime @default(now())
+
+  order    CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer Customer      @relation(fields: [customerId], references: [id])
+
+  @@map("ratings")
+}
+
+/// Keeps records of payments made for orders on the Chowly platform.
+model Payment {
+  id String @id @default(cuid())
+
+  /// CHANGE 009 — unique, enforcing that an order is paid for once.
+  orderId String @unique
+
+  amount               Decimal       @db.Decimal(10, 2)
+  method               PaymentMethod
+  status               PaymentStatus @default(SUCCESSFUL)
+  transactionReference String        @unique
+
+  /// CHANGE 010 — the brief allows the payment to be pretend but requires it to
+  /// be recorded and clearly labelled as such. The flag is stored on the record
+  /// rather than only shown in the interface, so the label survives in the data.
+  isPretend Boolean @default(true)
+
+  paymentDate DateTime @default(now())
+
+  order CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
