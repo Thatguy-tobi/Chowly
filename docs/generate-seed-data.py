@@ -18,6 +18,8 @@ written, so the arithmetic and the foreign keys cannot drift:
   * a complaint or rating is filed by the customer who placed the order
   * timestamps run order -> preparation -> served -> payment, and complaints
     and ratings come after the order
+  * no timestamp is dated later than the moment the file is generated
+  * every waiter, chef and bartender was employed before the order they handled
   * an order carries at most one rating and at most one payment
 
 Run:  python docs/generate-seed-data.py
@@ -33,6 +35,30 @@ from openpyxl.utils import get_column_letter
 random.seed(20260906)  # reproducible
 
 OUT = r"C:\Users\Work\Documents\TeSA\Chowly\Chowly - Seed Data.xlsx"
+
+# ---------------------------------------------------------------------------
+# DATE ANCHORS
+#
+# Every date in this file is placed relative to the day it is generated, never
+# to a fixed calendar date. A hardcoded date does not stay in the past: the
+# first version of this script started the orders at 1 September and spread
+# them over eight days, so once the real 6th arrived, nine orders were dated
+# tomorrow and the application showed tables waiting for food they had not
+# ordered yet. The checks at the end refuse to write anything dated after now.
+# ---------------------------------------------------------------------------
+N_ORDERS = 45
+SPAN_DAYS = (N_ORDERS - 1) // 6
+
+# The newest order falls on the previous day, which is always wholly past.
+# Orders run 12:00-21:00 so that they sit inside the restaurants' opening hours.
+LAST_DAY = (datetime.now() - timedelta(days=1)).replace(
+    hour=12, minute=0, second=0, microsecond=0
+)
+ORDER_BASE = LAST_DAY - timedelta(days=SPAN_DAYS)
+
+# Nobody can have served an order before they were hired, so employment dates
+# are kept a clear month behind the oldest order rather than merely in the past.
+EMPLOY_LATEST = ORDER_BASE - timedelta(days=30)
 
 # ---------------------------------------------------------------------------
 # RESTAURANT
@@ -207,8 +233,19 @@ for rid in RIDS:
     for role in needed + ["Waiter"]:
         sid += 1
         f, l = next_name()
-        staff.append((f"S{sid}", rid, f, l, f"080{random.randint(10000000, 99999999)}", role,
-                      f"202{random.choice('56')}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}"))
+        # Three draws, deliberately: the year/month/day are taken exactly as
+        # they were before so the random sequence — and therefore every price,
+        # menu and order already reviewed — is untouched. Only the result is
+        # corrected. A date that lands after EMPLOY_LATEST is pulled back a
+        # year, which is what stopped seven of these staff being "hired" in
+        # October to December 2026 while serving orders placed in August.
+        phone = f"080{random.randint(10000000, 99999999)}"   # drawn first, as before
+        hired = datetime(2020 + int(random.choice("56")),
+                         random.randint(1, 12),
+                         random.randint(1, 28))
+        while hired > EMPLOY_LATEST:
+            hired = hired.replace(year=hired.year - 1)
+        staff.append((f"S{sid}", rid, f, l, phone, role, hired.strftime("%Y-%m-%d")))
 
 # --- CUSTOMER: 3 carried + 20 new
 customers = [
@@ -298,8 +335,8 @@ for (s, rid, f, l, p, role, d) in staff:
 orders, order_items, preps, complaints, ratings, payments = [], [], [], [], [], []
 
 table_rng = random.Random(4242)  # independent of the main sequence
-base = datetime(2026, 9, 1, 12, 0)
-n_orders = 45
+base = ORDER_BASE                # anchored to the generation date; see the top
+n_orders = N_ORDERS
 # statuses: enough Paid to give 20+ payments, some orders still in flight
 statuses = (["Paid"] * 30) + (["Served"] * 6) + (["Preparing"] * 5) + (["Placed"] * 4)
 random.shuffle(statuses)
@@ -404,7 +441,7 @@ for n in range(1, n_orders + 1):
         pay_n += 1
         payments.append((f"PAY{pay_n:03d}", oid, total,      # amount == order_total
                          random.choice(["Card", "Bank Transfer", "Cash"]), "Successful",
-                         f"CHW-20260901-{pay_n:04d}",
+                         f"CHW-{base:%Y%m%d}-{pay_n:04d}",
                          (served_at + timedelta(minutes=random.randint(3, 20))).strftime("%Y-%m-%d %H:%M")))
 
 # ---------------------------------------------------------------------------
@@ -512,6 +549,49 @@ for p in payments:
 for o in orders:
     if o[5] == "Paid":
         check(o[0] in seen_pay, f"order {o[0]} is marked Paid but has no payment")
+
+# Nothing may be dated after the moment the file is generated. This is the check
+# that the first version lacked: every relative rule above passed while nine
+# orders sat in the future, because being consistent with each other says
+# nothing about being consistent with today.
+NOW = datetime.now()
+
+
+def not_future(label, stamp):
+    """Accepts both the date-only and the date-and-time forms used above."""
+    if stamp:
+        fmt = "%Y-%m-%d %H:%M" if " " in stamp else "%Y-%m-%d"
+        check(datetime.strptime(stamp, fmt) <= NOW, f"{label} is dated in the future: {stamp}")
+
+
+for s in staff:
+    not_future(f"staff {s[0]} employment", s[6])
+
+# Nobody serves or cooks an order before their first day. This is the rule the
+# future employment dates actually broke: seven staff were hired months after
+# orders they had already handled, which no arithmetic check would ever notice.
+STAFF_HIRED = {s[0]: datetime.strptime(s[6], "%Y-%m-%d") for s in staff}
+
+for o in orders:
+    not_future(f"order {o[0]}", o[4])
+    placed_at = datetime.strptime(o[4], "%Y-%m-%d %H:%M")
+    check(STAFF_HIRED[o[3]] <= placed_at,
+          f"order {o[0]} was served by waiter {o[3]}, hired {o[3] and STAFF_HIRED[o[3]].date()}, after the order")
+
+for p in preps:
+    for who, label in ((p[2], "chef"), (p[3], "bartender")):
+        if who:
+            check(STAFF_HIRED[who] <= datetime.strptime(ORDER[p[1]][4], "%Y-%m-%d %H:%M"),
+                  f"preparation {p[0]} names {label} {who}, hired after the order was placed")
+for p in preps:
+    not_future(f"preparation {p[0]} start", p[4])
+    not_future(f"preparation {p[0]} end", p[5])
+for c in complaints:
+    not_future(f"complaint {c[0]}", c[4])
+for r in ratings:
+    not_future(f"rating {r[0]}", r[5])
+for p in payments:
+    not_future(f"payment {p[0]}", p[6])
 
 if errors:
     print(f"VALIDATION FAILED — {len(errors)} problem(s):")
