@@ -22,6 +22,17 @@ export default function CartPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // What was sent, frozen at the moment of sending. Placing an order empties
+  // the basket and then navigates, and between those two the page would
+  // otherwise re-render from an empty basket and flash "Total ₦0 · 0 min" at
+  // someone who has just committed to paying. On the deployed site that gap is
+  // a round trip to Frankfurt, which is long enough to read.
+  const [sent, setSent] = useState<{
+    lines: typeof cart.lines;
+    total: number;
+    wait: number;
+  } | null>(null);
+
   useEffect(() => {
     if (ready && !session.customer.customerId) router.replace("/");
   }, [ready, session.customer.customerId, router]);
@@ -34,6 +45,7 @@ export default function CartPage() {
       return;
     }
     setError(null);
+    setSent({ lines: cart.lines, total: cart.total, wait: cart.estimatedWaitMinutes });
     setBusy(true);
     try {
       const res = await fetch("/api/orders", {
@@ -52,6 +64,8 @@ export default function CartPage() {
       router.push(`/orders/${data.reference}?placed=1`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
+      // The order did not go through, so the basket is still the real one.
+      setSent(null);
       setBusy(false);
     }
   }
@@ -80,6 +94,12 @@ export default function CartPage() {
     );
   }
 
+  // While the order is in flight, show what was sent rather than the basket it
+  // has already been emptied from.
+  const lines = sent?.lines ?? cart.lines;
+  const total = sent?.total ?? cart.total;
+  const wait = sent?.wait ?? cart.estimatedWaitMinutes;
+
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
       <h1 className="font-display text-2xl text-ink">Your order</h1>
@@ -88,7 +108,7 @@ export default function CartPage() {
       </p>
 
       <Card className="mt-5 divide-y divide-border-subtle">
-        {cart.lines.map((line) => (
+        {lines.map((line) => (
           <div key={line.itemId} className="flex items-center gap-3 p-4">
             <span aria-hidden className="text-2xl">
               {line.emoji ?? "🍽️"}
@@ -130,11 +150,11 @@ export default function CartPage() {
       <Card className="mt-4 p-4">
         <div className="flex items-center justify-between">
           <span className="text-ink-soft">Total</span>
-          <span className="font-display text-xl text-ink">{naira(cart.total)}</span>
+          <span className="font-display text-xl text-ink">{naira(total)}</span>
         </div>
         <div className="mt-2 flex items-center justify-between text-sm">
           <span className="text-ink-soft">Estimated wait</span>
-          <span className="font-medium text-ink">{minutes(cart.estimatedWaitMinutes)}</span>
+          <span className="font-medium text-ink">{minutes(wait)}</span>
         </div>
         <p className="mt-3 text-xs text-ink-faint">
           The kitchen and the bar work at the same time, so the wait is set by
