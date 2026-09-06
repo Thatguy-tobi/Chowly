@@ -20,6 +20,7 @@ written, so the arithmetic and the foreign keys cannot drift:
     and ratings come after the order
   * no timestamp is dated later than the moment the file is generated
   * every waiter, chef and bartender was employed before the order they handled
+  * complaints and ratings only exist against orders that were actually served
   * an order carries at most one rating and at most one payment
 
 Run:  python docs/generate-seed-data.py
@@ -48,6 +49,10 @@ OUT = r"C:\Users\Work\Documents\TeSA\Chowly\Chowly - Seed Data.xlsx"
 # ---------------------------------------------------------------------------
 N_ORDERS = 45
 SPAN_DAYS = (N_ORDERS - 1) // 6
+
+# One moment, captured once, so every "still in flight" order is measured from
+# the same clock rather than drifting as the script runs.
+NOW_ANCHOR = datetime.now().replace(second=0, microsecond=0)
 
 # The newest order falls on the previous day, which is always wholly past.
 # Orders run 12:00-21:00 so that they sit inside the restaurants' opening hours.
@@ -387,6 +392,21 @@ for n in range(1, n_orders + 1):
     # table_number is CHANGE 006. It is drawn from a separate generator so that
     # adding this column does not shift the main random sequence and alter data
     # that has already been reviewed.
+    # An order that is still being cooked should be being cooked NOW. Left on
+    # the historical dates above, the waiter's queue opens on tables that have
+    # supposedly been waiting since last week — "202 hr over the 21 min quoted"
+    # reads as a broken application rather than as old data. Finished orders
+    # keep their place in history; only the ones still in flight are pulled to
+    # the present.
+    #
+    # The offset is derived from values already drawn rather than from new
+    # random calls, so the sequence — and every price, item and name already
+    # reviewed — is left exactly as it was. The spread runs either side of the
+    # quoted wait, so some of these read as on time and some as running late.
+    if status in ("Placed", "Preparing"):
+        ago = 6 + (placed.hour * 7 + placed.minute) % (wait + 25)
+        placed = NOW_ANCHOR - timedelta(minutes=ago)
+
     table_no = table_rng.randint(1, 24)
     orders.append((oid, cust, rid, waiter, placed.strftime("%Y-%m-%d %H:%M"), status, wait, total, table_no))
 
@@ -408,7 +428,12 @@ for n in range(1, n_orders + 1):
             start.strftime("%Y-%m-%d %H:%M"),
             end.strftime("%Y-%m-%d %H:%M") if status in ("Served", "Paid") else "",
         ))
-        served_at = end
+        # Only an order that actually reached the table has been served. A
+        # "Preparing" order has a projected finish time, but nobody has eaten
+        # yet — treating that as served is what previously let four orders
+        # still in the kitchen carry a customer rating, one of them a
+        # two-star with a complaint about food that had not arrived.
+        served_at = end if status in ("Served", "Paid") else None
     else:
         served_at = None
 
@@ -566,6 +591,14 @@ def not_future(label, stamp):
 
 for s in staff:
     not_future(f"staff {s[0]} employment", s[6])
+
+# You cannot rate or complain about a meal you have not been given yet.
+for c in complaints:
+    check(ORDER[c[1]][5] in ("Served", "Paid"),
+          f"complaint {c[0]} is against {c[1]}, which is still {ORDER[c[1]][5]}")
+for r in ratings:
+    check(ORDER[r[1]][5] in ("Served", "Paid"),
+          f"rating {r[0]} is against {r[1]}, which is still {ORDER[r[1]][5]}")
 
 # Nobody serves or cooks an order before their first day. This is the rule the
 # future employment dates actually broke: seven staff were hired months after
