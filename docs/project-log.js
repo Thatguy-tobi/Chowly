@@ -377,10 +377,108 @@ children.push(
       ],
       [
         "005",
-        "—",
-        "Whether the app serves one restaurant or both seeded restaurants",
-        "AWAITING REASON — the submitted model supports many restaurants; scope affects whether those relationships are exercised or left decorative.",
-        "Open",
+        "6 Sep 2026",
+        "The application serves all twelve seeded restaurants, not one",
+        "The submitted model supports many restaurants, and restricting the interface to one would have left the Restaurant–Menu–MenuItem and Restaurant–Staff relationships in the database but unreachable — decorative rather than exercised. Serving all twelve proves those relationships work against real data rather than against one hardcoded case, and gives anyone marking the work twelve menus to open instead of one. The cost is the restaurant switcher in the header, which is additional surface area to get right; change 019 records a defect it caused.",
+        "Confirmed",
+      ],
+      [
+        "006",
+        "6 Sep 2026",
+        "Add table_number to CustomerOrder",
+        "The schema half of decision 004. The submitted model records who ordered but not where they are sitting, and without a login the table number is the only thing that tells a waiter where to carry the food. Required rather than optional: an order that cannot be delivered is not an order.",
+        "Confirmed",
+      ],
+      [
+        "007",
+        "6 Sep 2026",
+        "Order status becomes a fixed enum: PLACED, PREPARING, SERVED, PAID",
+        "The submitted model held a free-text status showing values such as “Preparing” and “Completed”. Free text allows two spellings of the same state and gives the application nothing to check against. The lifecycle the brief describes is fixed — an order is placed, a waiter records who prepared it, it is served, and it is paid for on the way out — so the database rejects anything outside that list, and the API can refuse illegal jumps such as serving an order nobody has prepared.",
+        "Confirmed",
+      ],
+      [
+        "008",
+        "6 Sep 2026",
+        "chef_id and bartender_id on OrderPreparation are both optional",
+        "An order of drinks only has no chef, and an order of food only has no bartender. Requiring both would force the waiter to name someone who did no work, which puts false data in the table to satisfy a constraint. Requirement 4 is still met: the API refuses a preparation record naming neither, so at least one real person is always recorded.",
+        "Confirmed",
+      ],
+      [
+        "009",
+        "6 Sep 2026",
+        "Unique constraint on order_id in OrderPreparation, Rating and Payment",
+        "The Relationships sheet of the submitted model declares these as 1:1, 1:0..1 and 1:1. Without a unique constraint the database would happily accept two preparation records for one order, several ratings of the same meal, or a second payment against an order already settled. The declared cardinality is enforced by the database rather than trusted to the application, so a bug in the API cannot corrupt the data behind it.",
+        "Confirmed",
+      ],
+      [
+        "010",
+        "6 Sep 2026",
+        "is_pretend flag added to Payment",
+        "Requirement 5 allows the payment to be pretend but requires it to be recorded and clearly labelled as such. Holding the flag on the record rather than only wording it in the interface means the label survives in the data: anyone reading the payments table later can see that no money moved, without having to know how the screen was worded.",
+        "Confirmed",
+      ],
+      [
+        "011",
+        "6 Sep 2026",
+        "opening_time and closing_time stored as “HH:mm” text, not timestamps",
+        "They describe a time of day that repeats every day, not a moment in time. Storing them as timestamps would attach a date and a timezone to something that has neither, which invites timezone bugs — a restaurant appearing to close at 22:00 in one place and 23:00 in another — for no benefit.",
+        "Confirmed",
+      ],
+      [
+        "012",
+        "6 Sep 2026",
+        "Surname, phone and email on Customer made optional",
+        "There is no login, by requirement 6. A customer sitting at a table gives a first name and a table number and nothing else, so requiring the remaining fields would mean inventing data nobody entered. The columns are kept because the submitted model has them and a restaurant may later collect them.",
+        "Confirmed",
+      ],
+      [
+        "013",
+        "6 Sep 2026",
+        "Menu status becomes a boolean is_active",
+        "The submitted model held a text status whose only observed value was “Active”. A menu is either in use or it is not, and a boolean says that exactly while making a third value impossible to enter by mistake.",
+        "Confirmed",
+      ],
+      [
+        "014",
+        "6 Sep 2026",
+        "emoji added to MenuItem",
+        "Presentation only — a small glyph beside each dish so the menu reads as a menu rather than a table of rows. Nothing in the application depends on it, and an item without one falls back to a generic symbol. Recorded here because it is a column that does not appear in the submitted model, not because it carries any logic.",
+        "Confirmed",
+      ],
+      [
+        "015",
+        "6 Sep 2026",
+        "reference added to CustomerOrder, e.g. “ORD047”",
+        "The primary key is a cuid — a long random string nobody can read back across a noisy dining room. A short unique reference is what the customer sees on screen and what the waiter uses to identify the order out loud, and it can be looked up directly, so the customer's own order page has a shareable address.",
+        "Confirmed",
+      ],
+      [
+        "016",
+        "6 Sep 2026",
+        "Connection URLs moved out of schema.prisma into prisma.config.ts; the application connects through a driver adapter",
+        "Forced by the tool, not chosen. Prisma 7 no longer accepts url and directUrl inside the datasource block, no longer loads .env automatically, and requires a driver adapter at runtime — here @prisma/adapter-neon over Neon's serverless driver. The migration URL now lives in prisma.config.ts and the running application builds its own connection. Section 5 records that this was reached by correcting advice that described the previous major version.",
+        "Confirmed",
+      ],
+      [
+        "017",
+        "6 Sep 2026",
+        "The session remembers a restaurant per role, not one restaurant overall",
+        "My own requirement, from a case the first design could not answer: I might be a customer with a table at Mood Lagos and also work as a waiter at Terra Kulture, and switching roles should not throw away either. The session therefore holds the customer's restaurant and table alongside the waiter's restaurant independently, so moving the waiter somewhere else leaves my table where it is.",
+        "Confirmed",
+      ],
+      [
+        "018",
+        "6 Sep 2026",
+        "Waiting time is the slowest item plus a small allowance per extra portion, not the sum of every item",
+        "The first version added every preparation time together and quoted 116 minutes for an ordinary table's order, which is wrong in a way arithmetic checks could not catch — the sums were correct, the model of the kitchen was not. A kitchen cooks several dishes at once, and the kitchen and the bar work in parallel. The estimate is now the slowest food item plus three minutes for each additional food portion, against the slowest drink plus two minutes for each additional drink, whichever of the two is longer. The same order now quotes 42 minutes, and across the seeded data the range is 6 to 55 minutes with an average of 25.",
+        "Confirmed",
+      ],
+      [
+        "019",
+        "6 Sep 2026",
+        "Changing restaurant returns the customer to the entry screen and empties the basket",
+        "A defect found in testing, recorded because the brief asks for an honest history. Switching restaurant cleared the table number but left the customer inside a menu they could no longer order from, and the failure surfaced as a raw validation message — “expected number, received null”. A customer at a new restaurant is at a new table, so they now return to the entry screen to be seated, with that restaurant already selected. The basket goes with them: it held another kitchen's dishes, which this one cannot cook. Any basket whose restaurant no longer matches the session is treated as empty.",
+        "Confirmed",
       ],
     ],
     { statusCol: 4, boldCol: 0 }
@@ -441,6 +539,27 @@ children.push(
         "Rejected as offered; rewritten",
         "The suggested reasons were reasonable but were not mine. I supplied my own — the Render comparison and wanting to learn Prisma — and only those were written up.",
       ],
+      [
+        "6 Sep 2026",
+        "Claude Code (Opus)",
+        "Set up Prisma against the Neon database",
+        "Incorrect; corrected against the documentation",
+        "The setup steps given described Prisma 6. Prisma 7 rejected the schema outright (error P1012) because connection URLs are no longer allowed in the datasource block, and it no longer reads .env by itself. The error was the first sign that the guidance was out of date; the installed package's own documentation settled it. Became change 016.",
+      ],
+      [
+        "6 Sep 2026",
+        "Claude Code (Opus)",
+        "Generate a consistent seed dataset from real Lagos restaurants and check its arithmetic",
+        "Accepted after a fault was found by inspection",
+        "Every total, subtotal and line price was arithmetically correct and the automated checks passed, but a sample order quoted a 116-minute wait because the formula added every preparation time together. Correct arithmetic on a wrong formula: the checks could not see it, and reading one order did. Became change 018.",
+      ],
+      [
+        "6 Sep 2026",
+        "Claude Code (Opus)",
+        "Build the customer flow, then fix the error it produced when switching restaurant",
+        "Accepted, after the fix was tested for the case that broke it",
+        "The defect existed because the flow had only ever been walked straight through at a single restaurant. Testing the switch also exposed a second fault nobody had reported — the basket survived the move and still held the previous restaurant's dishes. Became change 019.",
+      ],
     ]
   )
 );
@@ -475,9 +594,7 @@ children.push(
 // 8. Open questions
 children.push(H1("8. Open questions"));
 children.push(P("Still outstanding. Resolved questions move into the change log in section 4 with the reason attached."));
-children.push(Bullet("Does the application serve one restaurant, or both of the restaurants in the model? The model supports many; the choice decides whether those relationships are exercised or left decorative. (Change 005.)"));
 children.push(Bullet("Should the repository be public, or private with the facilitators invited? A private repository they cannot open would fail deliverable 1."));
-children.push(Bullet("Which name and email address should the git commits be authored under?"));
 
 // ---------- document ----------
 const doc = new Document({
