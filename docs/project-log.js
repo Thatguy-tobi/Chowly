@@ -367,6 +367,7 @@ children.push(
       ["013", "Menu", "status became a boolean, is_active"],
       ["014", "MenuItem", "emoji added, presentation only"],
       ["015", "CustomerOrder", "reference added — a short readable code such as ORD048"],
+      ["022", "CustomerOrder", "served_at added — the moment the order reached the table, which everything about punctuality is measured from"],
     ],
     { boldCol: 0 }
   )
@@ -566,6 +567,76 @@ children.push(
         "Nine orders were dated up to two days in the future, because the generator counted forward from a hardcoded 1 September that the calendar had since overtaken. Every arithmetic check passed over it: the rows were consistent with each other, just not with today. Two further faults surfaced from the same investigation — seven staff were employed months after orders they had already served, and four orders still in the kitchen carried customer ratings, one a two-star complaint about food that had not arrived. Orders that are still being prepared are now dated within the last hour, so the waiter's queue shows live work rather than tables that have supposedly waited a week. The generator and the verification script both refuse to accept any of these three faults again.",
         "Confirmed",
       ],
+      [
+        "022",
+        "7 Sep 2026",
+        "served_at added to CustomerOrder",
+        "The submitted model has no field for the moment an order reached the table, and almost everything the brief asks to be judged depends on it: whether the wait beat the quote, and therefore whether a complaint is justified. Worse, the field existed in the schema but the seeded data never filled it, so the application measured the wait from the order to the present moment instead — a meal served days earlier was reported on screen as having taken 3832 minutes. It is null until the order is served and equal to the preparation end time afterwards, and both the generator and the verification script now reject a served order that lacks it.",
+        "Confirmed",
+      ],
+      [
+        "023",
+        "7 Sep 2026",
+        "The waiter can resolve a complaint, and reopen one",
+        "Complaint.status existed in the model and was displayed to both the customer and the waiter as Open or Resolved, but nothing in the application could ever change it — every complaint raised on the live site would have stayed open forever. Requirement 4 is only half met by storing a complaint; somebody has to be able to act on it. Resolving is reversible, so one marked resolved in error can be put back.",
+        "Confirmed",
+      ],
+      [
+        "024",
+        "7 Sep 2026",
+        "A rating requires the order to have been served; a complaint does not",
+        "The two had been governed by the same rule, and it was the wrong rule for both. A rating is a verdict on a meal, so it now needs the meal to have arrived — previously an order still in the kitchen could be scored. A complaint is the opposite: the delay the brief describes is felt while the customer is still waiting, so requiring the food to arrive first would refuse the complaint at the moment it is most justified. The mismatch was found because the verification script and the API disagreed, which would have made an ordinary customer action look like a data fault.",
+        "Confirmed",
+      ],
+      [
+        "025",
+        "7 Sep 2026",
+        "Muted text darkened to meet the contrast standard",
+        "Measured rather than judged by eye. The muted colour used for timestamps, preparation times and hints scored 2.76:1 against the sunken background where the accessibility standard asks for 4.5:1, and failed on three of four backgrounds in light mode and two in dark. It appears on nearly every screen, so being decorative was no reason for it to be unreadable. Now 4.56:1 at worst. The success colour was also a fraction under and was darkened.",
+        "Confirmed",
+      ],
+      [
+        "026",
+        "7 Sep 2026",
+        "Menu search, and loading placeholders shaped like the content",
+        "A restaurant here can carry thirty-four items and the platform holds two hundred and thirty-six, which is more than is reasonable to scroll. Searching spans food and drinks together, because somebody typing the name of a drink should find it without first knowing which tab it lives under. Separately, the spinners were replaced with outlines of the content that is coming: on the deployed site every query crosses to Frankfurt and back, which is long enough for a blank screen to look like a broken one.",
+        "Confirmed",
+      ],
+      [
+        "027",
+        "7 Sep 2026",
+        "A dashboard reporting how service is going",
+        "Beyond the brief. Twelve entities are worth little if nothing ever reads across them, so this joins orders, items, staff, ratings, complaints and payments into figures a manager would actually ask for: takings against money still owed, actual waits against quoted ones, how many orders beat their quote, the spread of ratings, and the same broken down per restaurant. It is deliberately group-wide — around fifty orders across twelve restaurants means any single one is four rows and a lot of white space. It also earned its place immediately by exposing change 022.",
+        "Confirmed",
+      ],
+      [
+        "028",
+        "7 Sep 2026",
+        "An admin surface for registering restaurants, menus, items and staff",
+        "Beyond the brief, which only requires a menu loaded by me — the seeded data already satisfies that. This is the only part of the application that creates Restaurant, Menu, MenuItem and Staff rather than reading what the seed produced, so it exercises the half of the model nothing else touches. It has no login, because the application has none by design; that is stated plainly on the page rather than hidden, and a real deployment would put it behind a staff sign-in.",
+        "Confirmed",
+      ],
+      [
+        "029",
+        "7 Sep 2026",
+        "A restaurant that cannot complete an order is not offered to customers",
+        "Found by using the admin pages. The first restaurant registered through them had no staff, and placing an order assigns a waiter — so a customer could choose it, browse the menu, add dishes and only be refused at the checkout. The restaurant list now reports whether each one can actually trade, using the same test the order endpoint applies: at least one waiter, and at least one item available on an active menu. Those that cannot are shown as not taking orders yet, and the admin page says exactly what is missing.",
+        "Confirmed",
+      ],
+      [
+        "030",
+        "7 Sep 2026",
+        "Seeded orders are rebuilt rather than upserted",
+        "The most serious fault found in the build, and it was in the seeding rather than the application. The script upserted everything and its own comment claimed that running it twice was harmless. It was not: regenerating the dataset changes which items belong to which order, and upserting wrote the new lines while leaving the previous ones in place, so nine orders ended up carrying both sets and their line items no longer added up to their totals. It reached the live database. It had survived four regenerations because the generated data was checked and the database after seeding was not. Seeded orders are now deleted and written again, which cascades to their items, preparation, complaints, ratings and payments; orders placed through the application have generated identifiers and are left alone.",
+        "Confirmed",
+      ],
+      [
+        "031",
+        "7 Sep 2026",
+        "Sample orders meant to be on time are actually on time, and 3-star ratings exist",
+        "Two artefacts of the generator that the dashboard made visible. Orders not deliberately delayed were given a margin of minus four to plus three minutes, so about half of them drifted a minute or two past the quote and the group reported 14% served on time — a figure that reads as a broken application rather than as pessimistic sample data. Ratings were scored one to two after a complaint and four to five otherwise, which left a permanent gap in the middle of the chart that looked like a fault in the rating feature. Now 39% on time, and three stars occur. The remaining severity is genuine: at least twenty complaints across forty-five orders was the requirement, so roughly half of them go wrong by design, and the average rating follows from that rather than from a defect.",
+        "Confirmed",
+      ],
     ],
     { statusCol: 4, boldCol: 0 }
   )
@@ -646,6 +717,34 @@ children.push(
         "Accepted, after the fix was tested for the case that broke it",
         "The defect existed because the flow had only ever been walked straight through at a single restaurant. Testing the switch also exposed a second fault nobody had reported — the basket survived the move and still held the previous restaurant's dishes. Became change 019.",
       ],
+      [
+        "7 Sep 2026",
+        "Claude Code (Opus)",
+        "Check the interface against the accessibility standard",
+        "Partly wrong, then measured",
+        "It first reported that reduced-motion support and keyboard focus rings were missing. Both were already implemented — it had inferred their absence from one line of styling without opening the stylesheet. The contrast figures that followed were computed rather than judged, and those found four genuine failures.",
+      ],
+      [
+        "7 Sep 2026",
+        "Claude Code (Opus)",
+        "Build a dashboard reporting waits, ratings and takings",
+        "Accepted, and it exposed a fault",
+        "The first figures it produced were an average wait of 231 minutes against 26 quoted, which was obviously wrong and turned out to be the application's fault rather than the dashboard's: served orders had never recorded when they were served. Became change 022.",
+      ],
+      [
+        "7 Sep 2026",
+        "Claude Code (Opus)",
+        "Add an admin surface for restaurants, menus and items",
+        "Accepted after a dead end was found by using it",
+        "The first restaurant registered through it could not take an order, because placing one assigns a waiter and it had no staff — a customer could have browsed and chosen dishes only to be refused at the checkout. Fixed by making the restaurant list report whether each one can actually trade. Became changes 028 and 029.",
+      ],
+      [
+        "7 Sep 2026",
+        "Claude Code (Opus)",
+        "Regenerate the sample data so the figures read sensibly",
+        "Corrected after the database contradicted the file",
+        "Nine orders came out with line items that did not add up to their totals. The generated data was correct; the seeding was not, because it upserted and left the previous version's rows in place. It had survived four regenerations because the file was being checked and the database after seeding was not. Became change 030 — the most serious fault in the build.",
+      ],
     ]
   )
 );
@@ -691,7 +790,7 @@ children.push(
     [
       "Both are stored against the order itself rather than against the restaurant, so a complaint can always be traced to the meal, the table and the staff who handled it. Both are refused if they claim to come from a customer other than the one who placed the order.",
       "The two are deliberately governed by different rules. A rating is a verdict on a meal, so it is only accepted once the order has been served; the schema allows one rating per order, and rating again replaces the score rather than adding a second, because a customer changing their mind is reasonable while two ratings on one meal is not. A complaint is accepted at any stage, because the delay the brief describes is felt while the customer is still waiting — insisting the food arrive first would refuse the complaint at exactly the moment it is most justified.",
-      "Complaints appear on the waiter's copy of the order, so the person who can do something about it sees it.",
+      "Complaints appear on the waiter's copy of the order, and the waiter can mark one resolved or reopen it. Without that the status stored against every complaint would read Open for ever, which would make it a label rather than a record of anything.",
     ],
   ],
   [
@@ -701,6 +800,24 @@ children.push(
       "No money moves and no card details are ever requested. The screen says so before the customer pays and again on the receipt afterwards.",
       "The amount is taken from the order total held in the database, never from the request, so the sum paid cannot disagree with the sum owed. The payment carries a method, a unique transaction reference and an isPretend flag stored on the row itself — not merely wording on a screen — so anyone reading the payments table later can see that the transaction was simulated without needing to know how the interface was phrased.",
       "Paying is only offered once the order has been served, a second payment against the same order is refused, and Paid cannot be reached any other way: the endpoint that changes an order's status will not set it. An order is therefore only ever marked paid when there is a payment record to account for it.",
+    ],
+  ],
+  [
+    "6.6  Registering a restaurant (beyond the brief)",
+    "Somebody running the platform adds a restaurant, gives it a menu, puts items on that menu and hires staff — without editing the seed data.",
+    [
+      "This is the only part of the application that creates rather than reads. Everywhere else works with what the seed produced; here a Restaurant, a Menu, its MenuItems and its Staff are all written, which exercises the half of the model nothing else touches. An item added this way is immediately orderable by a customer, because it goes into the same tables the rest of the application reads from.",
+      "Every item requires a name, a price in whole naira and a preparation time, exactly as requirement 1 describes. The preparation time is not optional or decorative: it is what the wait quoted to a customer is computed from, and an item lacking one would make that estimate wrong for every order containing it. The category matters for the same reason — whether something is food or drink decides which of the two parallel streams it counts towards, and whether a chef or a bartender is recorded against the order.",
+      "A restaurant is not offered to customers until it can actually complete an order, meaning it has at least one waiter and at least one item available on an active menu. The admin page states which of those is missing. There is no login, because the application has none anywhere; the page says so rather than implying otherwise.",
+    ],
+  ],
+  [
+    "6.7  How service is going (beyond the brief)",
+    "The twelve restaurants read together — takings, waits against what was quoted, ratings, and complaints.",
+    [
+      "Every figure is computed from the database rather than assembled from whatever the browser had loaded. Takings are the sum of payments actually recorded, not of order totals, because an unpaid order is money owed rather than money taken — the two are reported separately.",
+      "It is deliberately group-wide with a per-restaurant table underneath. Around fifty orders spread across twelve restaurants means any single restaurant is four rows and a lot of white space; read together they say something. The same view breaks down to a single restaurant in the table below.",
+      "This screen earned its place immediately by making change 022 visible: a reported average wait of 231 minutes against 26 quoted was what exposed that served orders had never recorded when they were served.",
     ],
   ],
 ].forEach(([h, intent, points]) => {
@@ -753,6 +870,17 @@ children.push(H2("Back as the customer"));
   "Press “Pay”. The receipt shows the amount, the method and a transaction reference, and states plainly that the payment was simulated.",
   "Refresh the page, or close the browser and open the link again. The order, the rating, the complaint and the payment are all still there — they live in the database, not in the browser.",
 ].forEach((t) => children.push(Step(t, 2)));
+
+children.push(H2("Beyond the brief, if you want to see it"));
+children.push(
+  P(
+    "Two screens exist that the assignment does not ask for. Neither is needed to walk the story above."
+  )
+);
+[
+  "Open /dashboard, or follow “How service is going” from the waiter's queue. It reports the twelve restaurants together: takings against money still owed, how long orders actually took against what was quoted, the spread of ratings, and the same broken down per restaurant.",
+  "Open /admin. Add a restaurant, give it a menu, put an item on it with a price and a preparation time, and hire a waiter. Then switch to the customer view — the restaurant now appears in the list and you can order the dish you just created. Until it has both a waiter and an item it is shown as not taking orders yet, because without either the order would be refused.",
+].forEach((t) => children.push(Step(t, 3)));
 
 children.push(H2("Things worth trying"));
 [
