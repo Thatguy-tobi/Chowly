@@ -1,9 +1,10 @@
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   Table, TableRow, TableCell, WidthType, ShadingType, BorderStyle,
-  LevelFormat, PageBreak,
+  LevelFormat, PageBreak, ImageRun,
 } = require("docx");
 const fs = require("fs");
+const path = require("path");
 
 // ---------- palette ----------
 const ACCENT = "C00000";
@@ -84,6 +85,55 @@ const Step = (text, instance = 0) =>
     spacing: { after: 80, line: 276 },
     children: [new TextRun({ text, size: 21, color: INK, font: "Calibri" })],
   });
+
+/* ---------- screenshots ---------- */
+
+const SHOT_DIR = path.join(__dirname, "screenshots");
+/** Widest an image may render, in pixels. Roughly the usable page width. */
+const SHOT_MAX_PX = 580;
+
+/** Width and height out of a PNG's IHDR chunk, without a decoding library. */
+function pngSize(buf) {
+  const png = buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47;
+  if (!png) return null;
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+}
+
+/**
+ * A screenshot with a caption beneath it.
+ *
+ * Missing files are reported in the document rather than crashing the build, so
+ * the log can still be produced while the pictures are being collected — and so
+ * a gap is visible rather than silent.
+ */
+function Shot(file, caption) {
+  const full = path.join(SHOT_DIR, file);
+  if (!fs.existsSync(full)) {
+    return [P(`[ screenshot not found: docs/screenshots/${file} ]`, { italic: true, color: ACCENT })];
+  }
+  const data = fs.readFileSync(full);
+  const size = pngSize(data);
+  if (!size) {
+    return [P(`[ ${file} is not a PNG ]`, { italic: true, color: ACCENT })];
+  }
+  const scale = Math.min(1, SHOT_MAX_PX / size.w);
+  return [
+    new Paragraph({
+      spacing: { before: 140, after: 60 },
+      children: [
+        new ImageRun({
+          data,
+          type: "png",
+          transformation: {
+            width: Math.round(size.w * scale),
+            height: Math.round(size.h * scale),
+          },
+        }),
+      ],
+    }),
+    P(caption, { italic: true, color: MUTED, size: 18, after: 200 }),
+  ];
+}
 
 const Note = (text) =>
   new Paragraph({
@@ -772,6 +822,11 @@ children.push(
       "The menu is fetched for that restaurant alone. Items that are unavailable, and menus that are not active, are excluded in the database query rather than fetched and then hidden, so an unavailable dish is never sent to the browser at all. Food and drinks are separated into two tabs, because somebody who wants a drink should not have to scroll past thirty dishes to find one.",
       "Every item shows its name, description, price in naira and preparation time. The preparation time is shown on each row deliberately rather than hidden away: it is what the quoted wait is built from, and it lets someone in a hurry see that a grilled croaker is 33 minutes and a Sprite is 3 before they commit to either.",
     ],
+    [
+      ["01-landing.png", "Choosing a restaurant. Each card shows opening hours and how many items are on the menu; one that cannot yet take orders is greyed out."],
+      ["02-entry.png", "A first name and a table number are the whole of signing in. The staff view is reached from the same screen."],
+      ["03-menu.png", "The menu, split into food and drinks, with a search across both. Every item carries its price and its preparation time."],
+    ],
   ],
   [
     "6.2  Order placement",
@@ -780,6 +835,10 @@ children.push(
       "Chosen items are held in the browser while the customer is still deciding, but nothing the browser says about them is trusted. When the order is submitted, the server re-reads every item from the database, confirms it is available on an active menu belonging to that restaurant, and prices it from that row. A browser claiming its own price is ignored; an item from another restaurant is refused outright.",
       "The total and the estimated wait are both computed on the server, so the figure the customer agreed to is the figure that is stored. The wait is not the sum of the preparation times — the kitchen and the bar work at the same time, and a kitchen does not cook two fish one after the other — so it is the slower of the two streams: the slowest food item plus three minutes for each extra food portion, against the slowest drink plus two minutes for each extra drink.",
       "A waiter is assigned immediately, the order is given a short readable reference such as ORD048, and the customer lands on the order page. That page shows the reference, the table, the four stages of the order, and a countdown against the quoted time which ticks every second and turns red once the quoted time has passed. It refreshes itself, so the waiter's actions appear without the customer touching anything.",
+    ],
+    [
+      ["04-cart.png", "Barbecue ribs at 39 minutes and a doughnut at 8, both from the kitchen: the quoted wait is 42 minutes — the slower item plus three minutes for the second portion — not the 47 that adding them would give."],
+      ["05-order-placed.png", "The order as the customer follows it: reference, countdown against the quote, the four stages, and who is looking after it. The chef and bartender are still blank because the waiter has not recorded them yet."],
     ],
   ],
   [
@@ -790,6 +849,9 @@ children.push(
       "Opening an order splits it into what the kitchen owes and what the bar owes, so the waiter knows who to chase, and states plainly how far past the quoted time it is running. The chef and the bartender are chosen from that restaurant's own staff, and only the roles the order actually needs are offered: a drinks-only order shows no chef, because there is no food for a chef to have cooked.",
       "Recording the pair writes the preparation record and moves the order to Preparing, which is what the customer sees change on their own screen. Marking it served is refused until that has happened — the button is disabled, and the server refuses it independently as well, so the step cannot be skipped from either direction. Serving stamps the finish time, which is what the order was ultimately judged against.",
     ],
+    [
+      ["06-waiter-order.png", "The same order as the waiter works it, split into what the kitchen owes and what the bar owes. Both items are food, so only a chef is offered — the bar column reads “Nothing from the bar” and no bartender is asked for."],
+    ],
   ],
   [
     "6.4  Complaint and rating",
@@ -798,6 +860,9 @@ children.push(
       "Both are stored against the order itself rather than against the restaurant, so a complaint can always be traced to the meal, the table and the staff who handled it. Both are refused if they claim to come from a customer other than the one who placed the order.",
       "The two are deliberately governed by different rules. A rating is a verdict on a meal, so it is only accepted once the order has been served; the schema allows one rating per order, and rating again replaces the score rather than adding a second, because a customer changing their mind is reasonable while two ratings on one meal is not. A complaint is accepted at any stage, because the delay the brief describes is felt while the customer is still waiting — insisting the food arrive first would refuse the complaint at exactly the moment it is most justified.",
       "Complaints appear on the waiter's copy of the order, and the waiter can mark one resolved or reopen it. Without that the status stored against every complaint would read Open for ever, which would make it a label rather than a record of anything.",
+    ],
+    [
+      ["07-rating.png", "Rating appears only once the meal has arrived. The complaint link below it is available at any stage, including while the customer is still waiting."],
     ],
   ],
   [
@@ -808,6 +873,10 @@ children.push(
       "The amount is taken from the order total held in the database, never from the request, so the sum paid cannot disagree with the sum owed. The payment carries a method, a unique transaction reference and an isPretend flag stored on the row itself — not merely wording on a screen — so anyone reading the payments table later can see that the transaction was simulated without needing to know how the interface was phrased.",
       "Paying is only offered once the order has been served, a second payment against the same order is refused, and Paid cannot be reached any other way: the endpoint that changes an order's status will not set it. An order is therefore only ever marked paid when there is a payment record to account for it.",
     ],
+    [
+      ["08-payment.png", "Before serving: the methods are offered but the order cannot be paid for yet, and the screen says so."],
+      ["09-paid.png", "The receipt afterwards — amount, method, transaction reference and time, with the payment labelled as pretend. The same flag is stored on the row itself, not only shown here."],
+    ],
   ],
   [
     "6.6  Registering a restaurant (beyond the brief)",
@@ -816,6 +885,9 @@ children.push(
       "This is the only part of the application that creates rather than reads. Everywhere else works with what the seed produced; here a Restaurant, a Menu, its MenuItems and its Staff are all written, which exercises the half of the model nothing else touches. An item added this way is immediately orderable by a customer, because it goes into the same tables the rest of the application reads from.",
       "Every item requires a name, a price in whole naira and a preparation time, exactly as requirement 1 describes. The preparation time is not optional or decorative: it is what the wait quoted to a customer is computed from, and an item lacking one would make that estimate wrong for every order containing it. The category matters for the same reason — whether something is food or drink decides which of the two parallel streams it counts towards, and whether a chef or a bartender is recorded against the order.",
       "A restaurant is not offered to customers until it can actually complete an order, meaning it has at least one waiter and at least one item available on an active menu. The admin page states which of those is missing. There is no login, because the application has none anywhere; the page says so rather than implying otherwise.",
+    ],
+    [
+      ["10-admin.png", "A restaurant built through the interface rather than the seed: its menu, the item added to it with a price and a preparation time, and the staff hired to work there."],
     ],
   ],
   [
@@ -826,12 +898,16 @@ children.push(
       "It is deliberately group-wide with a per-restaurant table underneath. Around fifty orders spread across twelve restaurants means any single restaurant is four rows and a lot of white space; read together they say something. The same view breaks down to a single restaurant in the table below.",
       "This screen earned its place immediately by making change 022 visible: a reported average wait of 231 minutes against 26 quoted was what exposed that served orders had never recorded when they were served.",
     ],
+    [
+      ["11-dashboard.png", "Takings against money still owed, actual waits against quoted ones, the spread of ratings, and the same figures broken down per restaurant."],
+    ],
   ],
-].forEach(([h, intent, points]) => {
+].forEach(([h, intent, points, shots]) => {
   children.push(H2(h));
   children.push(Runs([{ t: "Intended behaviour: ", b: true }, { t: intent }], { after: 100 }));
   children.push(Runs([{ t: "Implemented behaviour", b: true }], { after: 60 }));
   points.forEach((t) => children.push(Bullet(t)));
+  (shots ?? []).forEach(([file, caption]) => Shot(file, caption).forEach((p) => children.push(p)));
 });
 
 // 7. Walkthrough
