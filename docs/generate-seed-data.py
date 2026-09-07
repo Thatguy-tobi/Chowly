@@ -408,7 +408,11 @@ for n in range(1, n_orders + 1):
         placed = NOW_ANCHOR - timedelta(minutes=ago)
 
     table_no = table_rng.randint(1, 24)
-    orders.append((oid, cust, rid, waiter, placed.strftime("%Y-%m-%d %H:%M"), status, wait, total, table_no))
+    # served_at is appended at the end on purpose: every index used elsewhere
+    # (ORDER[oid][4] for the date, [5] for status, [7] for the total) keeps its
+    # position. It is filled in below, once the finish time is known.
+    order_row = [oid, cust, rid, waiter, placed.strftime("%Y-%m-%d %H:%M"), status, wait, total, table_no, ""]
+    orders.append(order_row)
 
     has_food = food_units > 0
     has_drink = drink_units > 0
@@ -434,6 +438,12 @@ for n in range(1, n_orders + 1):
         # still in the kitchen carry a customer rating, one of them a
         # two-star with a complaint about food that had not arrived.
         served_at = end if status in ("Served", "Paid") else None
+        # The order reached the table when preparation finished. Leaving this
+        # empty is what made the application report a served order as having
+        # taken 3832 minutes: with no finish time it measured to the present
+        # moment instead.
+        if served_at:
+            order_row[9] = served_at.strftime("%Y-%m-%d %H:%M")
     else:
         served_at = None
 
@@ -507,7 +517,7 @@ for mid in mid_set:
     check(any(mi[1] == mid for mi in menu_items), f"menu {mid} has no items")
 
 for o in orders:
-    oid, cust, rid, waiter, when, status, wait, total, table_no = o
+    oid, cust, rid, waiter, when, status, wait, total, table_no, served_when = o
     check(cust in cid_set, f"order {oid} -> unknown customer {cust}")
     check(rid in rid_set, f"order {oid} -> unknown restaurant {rid}")
     check(waiter in sid_set, f"order {oid} -> unknown waiter {waiter}")
@@ -517,6 +527,23 @@ for o in orders:
     lines = [li for li in order_items if li[0] == oid]
     check(len(lines) > 0, f"order {oid} has no items")
     check(sum(li[4] for li in lines) == total, f"order {oid} total != sum of subtotals")
+
+    # An order that reached the table has a time it reached it, and one that
+    # has not, has not. Leaving served_at empty on a served order made the
+    # application measure the wait to the present moment instead, so a meal
+    # served days ago was reported as having taken 3832 minutes.
+    if status in ("Served", "Paid"):
+        check(served_when != "", f"order {oid} is {status} but has no served_at")
+        prep = next((p for p in preps if p[1] == oid), None)
+        check(prep is not None, f"order {oid} is {status} but has no preparation record")
+        if prep:
+            check(
+                served_when == prep[5],
+                f"order {oid} served_at {served_when} != preparation end {prep[5]}",
+            )
+        check(served_when > when, f"order {oid} was served before it was placed")
+    else:
+        check(served_when == "", f"order {oid} is {status} but carries a served_at")
 
 for li in order_items:
     oid, iid, qty, unit, sub = li
@@ -570,6 +597,8 @@ for p in payments:
     check(amount == ORDER[oid][7], f"payment {pid} amount != order total")
     check(ORDER[oid][5] == "Paid", f"payment {pid} is against an order not marked Paid")
     check(when > ORDER[oid][4], f"payment {pid} predates the order")
+
+orders = [tuple(o) for o in orders]
 
 for o in orders:
     if o[5] == "Paid":
@@ -693,8 +722,8 @@ sheet("MenuItem", "MENUITEM",
       menu_items, [12, 14, 16, 28, 40, 12, 18, 14, 8])
 
 sheet("CustomerOrder", "CUSTOMERORDER", "Keeps records of orders placed by customers. table_number is new — a waiter needs to know where to carry the food.",
-      ["order_id (PK)", "customer_id (FK)", "restaurant_id (FK)", "waiter_id (FK)", "order_date", "status", "estimated_wait_time", "order_total", "table_number"],
-      orders, [14, 18, 18, 14, 20, 14, 20, 14, 14])
+      ["order_id (PK)", "customer_id (FK)", "restaurant_id (FK)", "waiter_id (FK)", "order_date", "status", "estimated_wait_time", "order_total", "table_number", "served_at"],
+      orders, [14, 18, 18, 14, 20, 14, 20, 14, 14, 20])
 
 sheet("OrderItem", "ORDERITEM", "Bridge entity resolving the many-to-many between orders and menu items. subtotal = quantity x unit_price.",
       ["order_id (PK+FK)", "item_id (PK+FK)", "quantity", "unit_price", "subtotal"],
@@ -847,10 +876,11 @@ parts.append(block("menuItems", "{ id: string; menuId: string; categoryId: strin
                          price=m[5], preparationTimeMinutes=m[6], isAvailable=q(bool(m[7])), emoji=q(m[8]))
                     for m in menu_items]))
 
-parts.append(block("orders", "{ id: string; reference: string; customerId: string; restaurantId: string; waiterId: string; tableNumber: number; status: OrderStatus; orderDate: Date; estimatedWaitTime: number; orderTotal: number }",
+parts.append(block("orders", "{ id: string; reference: string; customerId: string; restaurantId: string; waiterId: string; tableNumber: number; status: OrderStatus; orderDate: Date; estimatedWaitTime: number; orderTotal: number; servedAt: Date | null }",
                    [dict(id=q(o[0]), reference=q(o[0]), customerId=q(o[1]), restaurantId=q(o[2]),
                          waiterId=q(o[3]), tableNumber=o[8], status=f"OrderStatus.{OSTATUS[o[5]]}",
-                         orderDate=dt(o[4]), estimatedWaitTime=o[6], orderTotal=o[7]) for o in orders]))
+                         orderDate=dt(o[4]), estimatedWaitTime=o[6], orderTotal=o[7],
+                         servedAt=(dt(o[9]) if o[9] else "null")) for o in orders]))
 
 parts.append(block("orderItems", "{ orderId: string; itemId: string; quantity: number; unitPrice: number; subtotal: number }",
                    [dict(orderId=q(li[0]), itemId=q(li[1]), quantity=li[2], unitPrice=li[3], subtotal=li[4])

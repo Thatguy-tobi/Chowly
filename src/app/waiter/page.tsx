@@ -105,11 +105,14 @@ export default function WaiterQueuePage() {
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="font-display text-2xl text-ink">Orders</h1>
-        <p className="shrink-0 text-sm text-ink-soft">
-          {active.length} to prepare
-          {lateCount > 0 && <span className="text-danger"> · {lateCount} late</span>}
-        </p>
+        <Link href="/dashboard" className="shrink-0 text-sm text-accent hover:underline">
+          How service is going
+        </Link>
       </div>
+      <p className="text-sm text-ink-soft">
+        {active.length} to prepare
+        {lateCount > 0 && <span className="text-danger"> · {lateCount} late</span>}
+      </p>
 
       {active.length === 0 && awaitingPayment.length === 0 ? (
         <EmptyState icon="☕" title="Nothing waiting">

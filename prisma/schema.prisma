@@ -214,6 +214,11 @@ model CustomerOrder {
   estimatedWaitTime Int
   orderTotal        Decimal @db.Decimal(10, 2)
 
+  /// CHANGE 022 — the moment the order reached the table, which the submitted
+  /// model has no field for. Everything the brief asks to be judged depends on
+  /// it: whether the wait beat the quote, and therefore whether a complaint is
+  /// justified. Null until the order is served, and equal to the preparation
+  /// end time thereafter.
   servedAt DateTime?
 
   customer    Customer          @relation(fields: [customerId], references: [id])

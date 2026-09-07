@@ -134,6 +134,24 @@ async function main() {
     check(o.orderDate <= now, `${o.reference} is dated in the future`);
     if (o.servedAt) check(o.servedAt <= now, `${o.reference} was served in the future`);
 
+    // A served order must record when it was served. Without it the wait is
+    // measured to the present moment, and a meal served days ago is reported
+    // as having taken thousands of minutes.
+    if (o.status === "SERVED" || o.status === "PAID") {
+      check(o.servedAt !== null, `${o.reference} is ${o.status} but has no servedAt`);
+      if (o.servedAt) {
+        check(o.servedAt > o.orderDate, `${o.reference} was served before it was placed`);
+        if (o.preparation?.preparationEnd) {
+          check(
+            o.servedAt.getTime() === o.preparation.preparationEnd.getTime(),
+            `${o.reference}: servedAt does not match when preparation finished`
+          );
+        }
+      }
+    } else {
+      check(o.servedAt === null, `${o.reference} is ${o.status} but carries a servedAt`);
+    }
+
     // Nobody can have handled an order before their first day at work.
     if (o.waiter) {
       check(o.waiter.employmentDate <= o.orderDate, `${o.reference}: waiter was hired after the order`);
