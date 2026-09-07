@@ -49,6 +49,10 @@ export const createComplaintSchema = z.object({
   complaintText: z.string().trim().min(5, "Please describe the problem").max(1000),
 });
 
+export const resolveComplaintSchema = z.object({
+  status: z.enum(["OPEN", "RESOLVED"]),
+});
+
 export const createRatingSchema = z.object({
   value: z.number().int().min(1, "Rating must be 1 to 5").max(5, "Rating must be 1 to 5"),
   comment: z.string().trim().max(500).optional().nullable(),

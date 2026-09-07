@@ -20,14 +20,21 @@
 
   --ink: #201b16;
   --ink-soft: #6b5f54;
-  --ink-faint: #9a8c7e;
+  /*
+   * Darkened from #9a8c7e, which measured 2.76:1 against the sunken surface —
+   * well under the 4.5:1 that WCAG AA asks for normal text. This colour carries
+   * timestamps, preparation times and hints, so it is on nearly every screen;
+   * being merely decorative-looking is not a reason for it to be unreadable.
+   * Now 4.56:1 at worst.
+   */
+  --ink-faint: #76685a;
 
   --accent: #c2410c; /* terracotta */
   --accent-hover: #9a3412;
   --accent-soft: #fff1e9;
   --on-accent: #ffffff;
 
-  --success: #15803d;
+  --success: #117c39; /* 4.47:1 on its own soft background before; now 4.72:1 */
   --success-soft: #e8f5ec;
   --warning: #b45309;
   --warning-soft: #fdf3e3;
@@ -48,7 +55,9 @@
 
     --ink: #f5efe8;
     --ink-soft: #b8a898;
-    --ink-faint: #8a7a6b;
+    /* Lightened from #8a7a6b for the same reason: 4.08:1 on a raised card,
+     * now 4.55:1. */
+    --ink-faint: #928273;
 
     --accent: #f97316;
     --accent-hover: #fb923c;

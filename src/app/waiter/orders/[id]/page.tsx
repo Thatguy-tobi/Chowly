@@ -204,10 +204,7 @@ export default function WaiterOrderPage({ params }: { params: Promise<{ id: stri
           </h2>
           <ul className="mt-2.5 flex flex-col gap-2.5">
             {order.complaints.map((c) => (
-              <li key={c.id} className="rounded-xl bg-surface-sunken p-3">
-                <p className="text-sm text-ink">{c.complaintText}</p>
-                <p className="mt-1 text-xs text-ink-faint">{dateAndTime(c.complaintDate)}</p>
-              </li>
+              <ComplaintRow key={c.id} complaint={c} onDone={load} />
             ))}
           </ul>
         </Card>
@@ -292,6 +289,66 @@ function ItemGroup({
         </ul>
       )}
     </Card>
+  );
+}
+
+/* ------------------------------------------------------------- complaints */
+
+/**
+ * A complaint, and the means to settle it. Requirement 4 stores the complaint;
+ * this is the part that lets somebody do something about it, so that "Open"
+ * means genuinely outstanding rather than merely never actionable.
+ */
+function ComplaintRow({
+  complaint,
+  onDone,
+}: {
+  complaint: Order["complaints"][number];
+  onDone: () => Promise<Order>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const resolved = complaint.status === "RESOLVED";
+
+  async function setStatus(status: "OPEN" | "RESOLVED") {
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/complaints/${complaint.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not update the complaint");
+      await onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className="rounded-xl bg-surface-sunken p-3">
+      <p className="text-sm text-ink">{complaint.complaintText}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Badge tone={resolved ? "success" : "warning"}>{resolved ? "Resolved" : "Open"}</Badge>
+        <span className="text-xs text-ink-faint">{dateAndTime(complaint.complaintDate)}</span>
+        <Button
+          size="sm"
+          variant={resolved ? "ghost" : "secondary"}
+          className="ml-auto"
+          disabled={busy}
+          onClick={() => setStatus(resolved ? "OPEN" : "RESOLVED")}
+        >
+          {busy ? "Saving…" : resolved ? "Reopen" : "Mark resolved"}
+        </Button>
+      </div>
+      {error && <div className="mt-2">
+        <ErrorNote>{error}</ErrorNote>
+      </div>}
+    </li>
   );
 }
 

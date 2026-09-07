@@ -17,10 +17,27 @@ const display = Fraunces({
   axes: ["SOFT", "WONK", "opsz"],
 });
 
+const DESCRIPTION =
+  "View the menu, order from your table, follow your order as it is prepared, and pay before you leave.";
+
 export const metadata: Metadata = {
+  // Needed for the Open Graph image to be given an absolute URL — relative ones
+  // are ignored by every service that unfurls a link.
+  metadataBase: new URL("https://chowly-red.vercel.app"),
   title: "Chowly — order from your table",
-  description:
-    "View the menu, order from your table, follow your order as it is prepared, and pay before you leave.",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Chowly — order from your table",
+    description: DESCRIPTION,
+    siteName: "Chowly",
+    type: "website",
+    locale: "en_NG",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chowly — order from your table",
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
