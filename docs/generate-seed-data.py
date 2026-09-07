@@ -423,7 +423,12 @@ for n in range(1, n_orders + 1):
         prep_n += 1
         start = placed + timedelta(minutes=random.randint(1, 4))
         # a late order overruns the quoted wait; an on-time one comes in under it
-        overrun = random.randint(12, 40) if is_late else random.randint(-4, 3)
+        # An order meant to be on time should actually be on time. The old
+        # range of -4..+3 let roughly half of them drift a minute or two past
+        # the quote, which made the dashboard report 14% served on time across
+        # the group — a figure that reads as a broken application rather than
+        # as deliberately pessimistic sample data. Late orders are unchanged.
+        overrun = random.randint(12, 40) if is_late else random.randint(-9, -2)
         end = start + timedelta(minutes=wait + overrun)
         preps.append((
             f"PR{prep_n:03d}", oid,
@@ -466,7 +471,10 @@ for n in range(1, n_orders + 1):
     # in the brief. Others rate it sometimes. At most one rating per order.
     if served_at is not None and (complained or rate_n < 30):
         rate_n += 1
-        value = random.randint(1, 2) if complained else random.randint(4, 5)
+        # 3 is reachable now. Scoring only 1-2 or 4-5 left a permanent hole in
+        # the middle of the ratings chart, which looked like a fault in the
+        # rating feature rather than a property of the data.
+        value = random.randint(1, 2) if complained else random.randint(3, 5)
         ratings.append((f"RT{rate_n:03d}", oid, cust, value,
                         random.choice(["Long waiting time", "Not happy with the delay"]) if complained
                         else random.choice(["Excellent service", "Lovely food", "Will come again", "Very good"]),

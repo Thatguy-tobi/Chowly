@@ -22,7 +22,19 @@ import * as data from "./seed-data";
  * database can be read side by side with the model that was submitted. Records
  * the application creates later get generated ids as normal.
  *
- * Everything is upserted, so running this twice is harmless.
+ * Reference data — restaurants, staff, categories, menus, items — is upserted,
+ * so re-running only updates it in place.
+ *
+ * Orders are different. They are REBUILT rather than upserted: the seeded ones
+ * are deleted first and written again. Upserting them was not harmless, however
+ * much the comment here used to claim it was. Regenerating the dataset changes
+ * which items belong to which order, and an upsert wrote the new lines while
+ * leaving the old ones behind — so an order ended up carrying both, and its
+ * line items no longer added up to its total. Deleting first is what makes the
+ * seeded data match the spreadsheet exactly instead of accumulating.
+ *
+ * Only orders whose id comes from the seed (ORD001…) are touched. Orders placed
+ * through the application have generated ids and are left alone.
  */
 
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
@@ -76,18 +88,22 @@ async function main() {
     prisma.menuItem.upsert({ where: { id: i.id }, update: i, create: i })
   );
 
-  await seed("orders", data.orders, (o) =>
-    prisma.customerOrder.upsert({ where: { id: o.id }, update: o, create: o })
-  );
+  // Clear out the previous version of the seeded orders before writing this
+  // one. Items, preparation, complaints, ratings and payments all cascade from
+  // the order, so removing the orders removes everything hanging off them and
+  // nothing is left over from a differently-shaped earlier dataset.
+  const seededOrderIds = data.orders.map((o) => o.id);
+  const removed = await prisma.customerOrder.deleteMany({
+    where: { id: { in: seededOrderIds } },
+  });
+  if (removed.count > 0) {
+    console.log(`  ${"(rebuilding)".padEnd(18)} ${String(removed.count).padStart(4)} old orders cleared`);
+  }
+
+  await seed("orders", data.orders, (o) => prisma.customerOrder.create({ data: o }));
 
   // OrderItem has a composite primary key rather than a single id.
-  for (const li of data.orderItems) {
-    await prisma.orderItem.upsert({
-      where: { orderId_itemId: { orderId: li.orderId, itemId: li.itemId } },
-      update: li,
-      create: li,
-    });
-  }
+  await prisma.orderItem.createMany({ data: data.orderItems });
   console.log(`  ${"order items".padEnd(18)} ${String(data.orderItems.length).padStart(4)}`);
 
   await seed("preparations", data.preparations, (p) =>
