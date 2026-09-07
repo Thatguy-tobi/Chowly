@@ -90,7 +90,9 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   }
   if (!order) return <Spinner label="Loading your order" />;
 
-  const canGiveFeedback = order.status !== "PLACED";
+  // Rating waits for the meal; complaining does not. Someone whose order is
+  // late is complaining precisely because it has not arrived.
+  const canRate = order.status === "SERVED" || order.status === "PAID";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
@@ -185,12 +187,8 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
         </Card>
       )}
 
-      {canGiveFeedback && (
-        <>
-          <RatingBlock order={order} onDone={load} />
-          <ComplaintBlock order={order} onDone={load} />
-        </>
-      )}
+      {canRate && <RatingBlock order={order} onDone={load} />}
+      <ComplaintBlock order={order} onDone={load} />
 
       <PaymentBlock order={order} onDone={load} />
     </div>

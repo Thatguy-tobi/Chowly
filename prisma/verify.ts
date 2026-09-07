@@ -147,15 +147,22 @@ async function main() {
 
     // feedback belongs to the customer who placed the order, and only exists
     // once there is a meal to have an opinion about
-    const served = o.status === "SERVED" || o.status === "PAID";
+    // A complaint is deliberately allowed at any stage. The story in the brief
+    // is a customer complaining about a delay, and the delay is felt while they
+    // are still waiting — insisting the food arrive first would refuse the
+    // complaint at exactly the moment it is most justified.
     for (const c of o.complaints) {
       check(c.customerId === o.customerId, `${o.reference}: complaint filed by another customer`);
-      check(served, `${o.reference} is ${o.status} but already has a complaint against it`);
     }
+    // A rating is different: it is a verdict on a meal, so the meal must have
+    // arrived.
     if (o.rating) {
       check(o.rating.customerId === o.customerId, `${o.reference}: rating given by another customer`);
       check(o.rating.value >= 1 && o.rating.value <= 5, `${o.reference}: rating out of range`);
-      check(served, `${o.reference} is ${o.status} but has already been rated`);
+      check(
+        o.status === "SERVED" || o.status === "PAID",
+        `${o.reference} is ${o.status} but has already been rated`
+      );
     }
   }
 

@@ -73,6 +73,18 @@ const Bullet = (text) =>
     children: [new TextRun({ text, size: 21, color: INK, font: "Calibri" })],
   });
 
+/**
+ * A numbered step, for the walkthrough in section 7. Each group of steps passes
+ * its own instance so that the three lists number 1, 2, 3 independently rather
+ * than running on from one another.
+ */
+const Step = (text, instance = 0) =>
+  new Paragraph({
+    numbering: { reference: "steps", level: 0, instance },
+    spacing: { after: 80, line: 276 },
+    children: [new TextRun({ text, size: 21, color: INK, font: "Calibri" })],
+  });
+
 const Note = (text) =>
   new Paragraph({
     spacing: { before: 100, after: 160, line: 276 },
@@ -175,8 +187,10 @@ children.push(
       ["Prepared by", "Tobi Akinola"],
       ["Builds on", "Assignment 1 — Chowly engineered data model (Software Architecture assignment.xlsx)"],
       ["Document started", "5 September 2026"],
-      ["Last updated", "6 September 2026"],
-      ["Status", "In progress — stack and hosting decided, build starting"],
+      ["Last updated", "7 September 2026"],
+      ["Live application", "https://chowly-red.vercel.app"],
+      ["Repository", "https://github.com/Thatguy-tobi/Chowly"],
+      ["Status", "Built, deployed and verified against the live database"],
     ]
   )
 );
@@ -205,29 +219,33 @@ children.push(
 );
 children.push(
   Note(
-    "Sections 3, 6 and 7 are deliberately incomplete at this point. They are filled in as each part of the application is actually built, not before."
+    "Sections 3, 6 and 7 were written as each part was actually built rather than in advance, which is why section 4 records faults found along the way as well as decisions taken. Everything described here has been exercised on the deployed site."
   )
 );
 
 // 2. Requirement tracker
 children.push(H1("2. Requirement tracker"));
-children.push(P("The eight functional requirements and three deliverables from the brief, and where each one stands."));
+children.push(
+  P(
+    "The eight functional requirements and three deliverables from the brief, and where each one stands. Every requirement below was checked by carrying it out on the deployed site — not on a development machine — and the resulting record was then read back out of the database and compared field by field with what the screens had shown."
+  )
+);
 children.push(
   Tbl(
-    [600, 5426, 3000],
+    [600, 5026, 3400],
     ["#", "Requirement", "Status"],
     [
-      ["1", "The menu — food and drinks loaded into the database, each item carrying a name, a price and a preparation time", "Not started"],
-      ["2", "Placing an order — customer selects items, submits, and is shown the order details and waiting time", "Not started"],
-      ["3", "Assigning the order — waiter opens an order, records the chef and bartender, marks it served", "Not started"],
-      ["4", "Complaint and rating — both stored against the order", "Not started"],
-      ["5", "Payment — a button that records payment and marks the order paid, clearly labelled as pretend", "Not started"],
-      ["6", "The two roles — a simple switch between customer and waiter, no login", "Not started"],
-      ["7", "Real storage — everything survives a page refresh", "Not started"],
-      ["8", "A live link — deployed and usable by anybody with the URL", "Not started"],
-      ["D1", "Git repository, accessible to facilitators, commit history showing the work as it was done", "Not started"],
-      ["D2", "URL of the deployed application", "Not started"],
-      ["D3", "This document", "In progress"],
+      ["1", "The menu — food and drinks loaded into the database, each item carrying a name, a price and a preparation time", "Done — 236 items across 12 restaurants"],
+      ["2", "Placing an order — customer selects items, submits, and is shown the order details and waiting time", "Done — ORD048, ₦16,300, quoted 33 min"],
+      ["3", "Assigning the order — waiter opens an order, records the chef and bartender, marks it served", "Done — chef and bartender recorded, then served"],
+      ["4", "Complaint and rating — both stored against the order", "Done — 4★ with comment, plus a complaint"],
+      ["5", "Payment — a button that records payment and marks the order paid, clearly labelled as pretend", "Done — recorded with is_pretend set"],
+      ["6", "The two roles — a simple switch between customer and waiter, no login", "Done — switched both ways mid-order"],
+      ["7", "Real storage — everything survives a page refresh", "Done — survived a full page reload"],
+      ["8", "A live link — deployed and usable by anybody with the URL", "Done — chowly-red.vercel.app"],
+      ["D1", "Git repository, accessible to facilitators, commit history showing the work as it was done", "Done — public, github.com/Thatguy-tobi/Chowly"],
+      ["D2", "URL of the deployed application", "Done — recorded in section 3.4"],
+      ["D3", "This document", "Done — sections 6 and 7 completed after deployment"],
     ],
     { statusCol: 2, boldCol: 0 }
   )
@@ -280,7 +298,30 @@ children.push(
 );
 
 children.push(H2("3.2  Project structure"));
-children.push(P("To be written once the stack is chosen and the project is scaffolded.", { italic: true, color: MUTED }));
+children.push(
+  P(
+    "One Next.js application holds both the interface and the API, so there is a single thing to deploy and a single thing that can fail. Pages are React components that run in the browser; the API routes beside them run on the server and are the only code that touches the database."
+  )
+);
+children.push(
+  Tbl(
+    [2600, 6426],
+    ["Folder", "What is in it"],
+    [
+      ["prisma/", "The schema, the migration, the seed data and seed script, and verify.ts — which reads the database back and checks every rule independently of the code that wrote it"],
+      ["src/app/", "One folder per page (menu, cart, orders, waiter) and src/app/api for the endpoints"],
+      ["src/components/", "The header carrying the customer / waiter switch, the order progress display, and the small shared pieces every screen is built from"],
+      ["src/lib/", "The database client, the browser-held session and basket, the waiting-time calculation, and the validation applied to every request body"],
+      ["docs/", "The generator that produces the seed spreadsheet and seed data together, and the source of this document"],
+    ],
+    { boldCol: 0 }
+  )
+);
+children.push(
+  P(
+    "Two rules shape where code lives. Anything that decides money or time — prices, totals, the estimated wait — is computed on the server from the database, never accepted from the browser. And the waiting-time calculation exists in exactly two places that are kept deliberately identical: src/lib/wait-time.ts for live orders and docs/generate-seed-data.py for seeded ones, so that both are quoted on the same rules and the sample data cannot contradict the application."
+  )
+);
 
 children.push(H2("3.3  The data model"));
 children.push(
@@ -309,10 +350,31 @@ children.push(
     { boldCol: 0 }
   )
 );
+children.push(Spacer(120));
+children.push(
+  Tbl(
+    [1100, 3200, 4726],
+    ["#", "Entity", "How the implemented model differs"],
+    [
+      ["001", "MenuItem", "preparation_time_minutes added — the brief requires it and the quoted wait is derived from it"],
+      ["006", "CustomerOrder", "table_number added — without a login it is the only thing that says where to take the food"],
+      ["007", "CustomerOrder", "status became a fixed set of four values instead of free text"],
+      ["008", "OrderPreparation", "chef and bartender are each optional, but at least one is required"],
+      ["009", "OrderPreparation, Rating, Payment", "order_id made unique, enforcing the 1:1 and 1:0..1 the model declares"],
+      ["010", "Payment", "is_pretend added, so the simulation is recorded in the data and not only on screen"],
+      ["011", "Restaurant", "opening and closing times stored as times of day, not timestamps"],
+      ["012", "Customer", "surname, phone and email made optional — nobody logs in to supply them"],
+      ["013", "Menu", "status became a boolean, is_active"],
+      ["014", "MenuItem", "emoji added, presentation only"],
+      ["015", "CustomerOrder", "reference added — a short readable code such as ORD048"],
+    ],
+    { boldCol: 0 }
+  )
+);
 children.push(Spacer(160));
 children.push(
   Note(
-    "The brief says: where the build forces a change to the model, make the change and say why. Every such change is recorded in Section 4, and the final implemented model will be restated here once the schema is settled."
+    "The brief says: where the build forces a change to the model, make the change and say why. All twelve entities above were implemented as designed; the differences are listed below and each one is justified in section 4. Every deviation is also marked in prisma/schema.prisma with the same change number, so the schema and this document can be read against each other."
   )
 );
 
@@ -321,8 +383,18 @@ children.push(
   Runs([
     { t: "Target: ", b: true },
     { t: "Vercel for the application, Neon for the PostgreSQL database. ", b: true },
-    { t: "The deployed URL and the finished procedure are recorded here once the application is live." },
+    { t: "Live at https://chowly-red.vercel.app, from https://github.com/Thatguy-tobi/Chowly." },
   ])
+);
+children.push(
+  P(
+    "The procedure, as actually carried out: the repository was pushed to GitHub and imported into Vercel, which detected Next.js without any configuration. The two Neon connection strings were entered as environment variables before the first build rather than after — a missing DIRECT_URL fails the build outright, because migrations cannot run through the pooler. Vercel offers to provision a database during import; that was declined, since doing so would have created an empty one and overwritten the connection strings pointing at the database already holding the data. The build runs prisma migrate deploy before next build, so the schema is brought up to date on every deployment, and prisma generate is bound to the install step so the generated client cannot go stale against Vercel's dependency cache."
+  )
+);
+children.push(
+  P(
+    "The deployment was then verified by walking the whole assignment on the live site rather than by trusting that the build succeeded: an order was placed as a customer (ORD048, ₦16,300, quoted 33 minutes), prepared and served as the waiter, then rated, complained about and paid for as the customer again. The stored record was read back from the database and checked field by field against what the screens had shown."
+  )
 );
 children.push(
   P(
@@ -339,7 +411,7 @@ children.push(
 children.push(H1("4. Decision and change log"));
 children.push(
   P(
-    "Every change to the model or to the shape of the application, with the reason for it. Entries marked AWAITING REASON are decisions that have been made but whose rationale has not yet been recorded — they are not written up until the reason is confirmed rather than guessed."
+    "Every change to the model or to the shape of the application, with the reason for it. Nothing was written up until the reason for it was confirmed rather than guessed, which is why several entries were left open for days before being completed. Entries 018, 019 and 021 record faults rather than decisions: the brief asks for an honest history, and a log showing only good choices would not be one."
   )
 );
 children.push(
@@ -586,24 +658,108 @@ children.push(
   )
 );
 [
-  ["6.1  Menu browsing", "A customer opens the app at a table and views the food and drinks currently available."],
-  ["6.2  Order placement", "A customer selects items and submits an order, and is shown the waiting time and the other details of that order."],
-  ["6.3  Order assignment", "The order is assigned to a waiter, who records the chef and the bartender that prepared it and marks it served."],
-  ["6.4  Complaint and rating", "Where an order is delayed, the customer submits a complaint and gives a low rating against that order."],
-  ["6.5  Payment", "The customer pays for the order on the platform just before exiting the restaurant. The payment is pretend, but it is recorded and clearly labelled as such."],
-].forEach(([h, intent]) => {
+  [
+    "6.1  Menu browsing",
+    "A customer opens the app at a table and views the food and drinks currently available.",
+    [
+      "The customer picks their restaurant, gives a first name and a table number, and is taken to that restaurant's menu. A Customer row is found or created at that point, so every order has a real customer behind it even though nobody logged in.",
+      "The menu is fetched for that restaurant alone. Items that are unavailable, and menus that are not active, are excluded in the database query rather than fetched and then hidden, so an unavailable dish is never sent to the browser at all. Food and drinks are separated into two tabs, because somebody who wants a drink should not have to scroll past thirty dishes to find one.",
+      "Every item shows its name, description, price in naira and preparation time. The preparation time is shown on each row deliberately rather than hidden away: it is what the quoted wait is built from, and it lets someone in a hurry see that a grilled croaker is 33 minutes and a Sprite is 3 before they commit to either.",
+    ],
+  ],
+  [
+    "6.2  Order placement",
+    "A customer selects items and submits an order, and is shown the waiting time and the other details of that order.",
+    [
+      "Chosen items are held in the browser while the customer is still deciding, but nothing the browser says about them is trusted. When the order is submitted, the server re-reads every item from the database, confirms it is available on an active menu belonging to that restaurant, and prices it from that row. A browser claiming its own price is ignored; an item from another restaurant is refused outright.",
+      "The total and the estimated wait are both computed on the server, so the figure the customer agreed to is the figure that is stored. The wait is not the sum of the preparation times — the kitchen and the bar work at the same time, and a kitchen does not cook two fish one after the other — so it is the slower of the two streams: the slowest food item plus three minutes for each extra food portion, against the slowest drink plus two minutes for each extra drink.",
+      "A waiter is assigned immediately, the order is given a short readable reference such as ORD048, and the customer lands on the order page. That page shows the reference, the table, the four stages of the order, and a countdown against the quoted time which ticks every second and turns red once the quoted time has passed. It refreshes itself, so the waiter's actions appear without the customer touching anything.",
+    ],
+  ],
+  [
+    "6.3  Order assignment",
+    "The order is assigned to a waiter, who records the chef and the bartender that prepared it and marks it served.",
+    [
+      "The waiter view lists that restaurant's orders with the work still outstanding at the top, oldest first — the table that has waited longest is the one most likely to complain. Orders that have been served but not paid sit below, and paid ones are folded away behind a toggle. Anything running past its quoted time is marked, and the queue refreshes on its own.",
+      "Opening an order splits it into what the kitchen owes and what the bar owes, so the waiter knows who to chase, and states plainly how far past the quoted time it is running. The chef and the bartender are chosen from that restaurant's own staff, and only the roles the order actually needs are offered: a drinks-only order shows no chef, because there is no food for a chef to have cooked.",
+      "Recording the pair writes the preparation record and moves the order to Preparing, which is what the customer sees change on their own screen. Marking it served is refused until that has happened — the button is disabled, and the server refuses it independently as well, so the step cannot be skipped from either direction. Serving stamps the finish time, which is what the order was ultimately judged against.",
+    ],
+  ],
+  [
+    "6.4  Complaint and rating",
+    "Where an order is delayed, the customer submits a complaint and gives a low rating against that order.",
+    [
+      "Both are stored against the order itself rather than against the restaurant, so a complaint can always be traced to the meal, the table and the staff who handled it. Both are refused if they claim to come from a customer other than the one who placed the order.",
+      "The two are deliberately governed by different rules. A rating is a verdict on a meal, so it is only accepted once the order has been served; the schema allows one rating per order, and rating again replaces the score rather than adding a second, because a customer changing their mind is reasonable while two ratings on one meal is not. A complaint is accepted at any stage, because the delay the brief describes is felt while the customer is still waiting — insisting the food arrive first would refuse the complaint at exactly the moment it is most justified.",
+      "Complaints appear on the waiter's copy of the order, so the person who can do something about it sees it.",
+    ],
+  ],
+  [
+    "6.5  Payment",
+    "The customer pays for the order on the platform just before exiting the restaurant. The payment is pretend, but it is recorded and clearly labelled as such.",
+    [
+      "No money moves and no card details are ever requested. The screen says so before the customer pays and again on the receipt afterwards.",
+      "The amount is taken from the order total held in the database, never from the request, so the sum paid cannot disagree with the sum owed. The payment carries a method, a unique transaction reference and an isPretend flag stored on the row itself — not merely wording on a screen — so anyone reading the payments table later can see that the transaction was simulated without needing to know how the interface was phrased.",
+      "Paying is only offered once the order has been served, a second payment against the same order is refused, and Paid cannot be reached any other way: the endpoint that changes an order's status will not set it. An order is therefore only ever marked paid when there is a payment record to account for it.",
+    ],
+  ],
+].forEach(([h, intent, points]) => {
   children.push(H2(h));
-  children.push(Runs([{ t: "Intended behaviour: ", b: true }, { t: intent }], { after: 80 }));
-  children.push(P("Implemented behaviour — to be written once built.", { italic: true, color: MUTED }));
+  children.push(Runs([{ t: "Intended behaviour: ", b: true }, { t: intent }], { after: 100 }));
+  children.push(Runs([{ t: "Implemented behaviour", b: true }], { after: 60 }));
+  points.forEach((t) => children.push(Bullet(t)));
 });
 
 // 7. Walkthrough
 children.push(H1("7. How to use it"));
 children.push(
-  P(
-    "A walkthrough a stranger can follow on the deployed link, including how to switch between the customer and the waiter. To be written once the application is deployed."
+  Runs([
+    { t: "Open " },
+    { t: "https://chowly-red.vercel.app", b: true },
+    {
+      t: " in any browser, on a phone or a computer. There is nothing to install, no account to create and no password. The steps below walk the whole story — ordering a meal, preparing it, serving it, complaining about it and paying for it — and take about three minutes.",
+    },
+  ])
+);
+children.push(
+  Note(
+    "Nothing on this site takes money. The payment step is simulated, no card details are asked for at any point, and every payment is stored flagged as pretend."
   )
 );
+
+children.push(H2("As the customer"));
+[
+  "Pick a restaurant from the twelve listed. Terra Kulture is a good one to try.",
+  "Type any first name and any table number, then press “Start ordering”. That is the whole sign-in — the name and table are what let a waiter bring food to the right person.",
+  "Add a dish from the Food tab and a drink from the Drinks tab. Each item shows its price and how long it takes to prepare.",
+  "Press “Review order”. The total and the estimated wait are shown. The wait is not the two preparation times added together, because the kitchen and the bar work at the same time — it is whichever of them takes longer.",
+  "Press “Place order”. You are given an order reference such as ORD048 and a countdown against the quoted time. Leave this page open, or come back to it later from “My orders”.",
+].forEach((t) => children.push(Step(t, 0)));
+
+children.push(H2("As the waiter"));
+[
+  "At the top of the screen there is a switch reading customer / waiter. Press “waiter”. There is no login: the same person can be both, which is what the brief asks for.",
+  "You are now looking at the kitchen queue for that restaurant. The order you just placed is in it, along with the orders already in the system. Anything running past its quoted time is flagged.",
+  "Open your order. It is split into what the kitchen owes and what the bar owes.",
+  "Choose a chef and a bartender from the restaurant's staff, then press “Record preparation”. The order moves to Preparing.",
+  "Press “Mark as served”. Note that this button is disabled until a chef and bartender have been recorded — the order cannot be served by someone unnamed.",
+].forEach((t) => children.push(Step(t, 1)));
+
+children.push(H2("Back as the customer"));
+[
+  "Switch back to customer at the top of the screen and open the order again. The chef and bartender the waiter recorded are now shown, and the order reads as served.",
+  "Give it a rating out of five and add a comment. Ratings only appear once the meal has arrived.",
+  "Press “Something wrong with this order?” to leave a complaint. A complaint can be made at any point, including while you are still waiting, because that is when a delay is actually felt. The waiter sees it on their copy of the order.",
+  "Press “Pay”. The receipt shows the amount, the method and a transaction reference, and states plainly that the payment was simulated.",
+  "Refresh the page, or close the browser and open the link again. The order, the rating, the complaint and the payment are all still there — they live in the database, not in the browser.",
+].forEach((t) => children.push(Step(t, 2)));
+
+children.push(H2("Things worth trying"));
+[
+  "Switch to the waiter and change restaurant from the menu at the top. Your own table at the first restaurant is remembered separately, so switching back as a customer returns you to it — one person can be a customer in one place and a waiter in another.",
+  "Try to mark an order served without recording who prepared it. The interface will not let you, and neither will the server if asked directly.",
+  "Try to pay twice. The second attempt is refused.",
+].forEach((t) => children.push(Bullet(t)));
 
 // 8. Open questions
 children.push(H1("8. Open questions"));
@@ -625,6 +781,18 @@ const doc = new Document({
             format: LevelFormat.BULLET,
             text: "•",
             alignment: AlignmentType.LEFT,
+            style: { paragraph: { indent: { left: 460, hanging: 260 } } },
+          },
+        ],
+      },
+      {
+        reference: "steps",
+        levels: [
+          {
+            level: 0,
+            format: LevelFormat.DECIMAL,
+            text: "%1.",
+            alignment: AlignmentType.START,
             style: { paragraph: { indent: { left: 460, hanging: 260 } } },
           },
         ],

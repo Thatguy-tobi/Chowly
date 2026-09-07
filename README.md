@@ -9,7 +9,7 @@ before leaving.
 There is no login. A switch at the top of every screen moves between acting as
 the customer and acting as the waiter.
 
-**Live application:** _added once deployed_
+**Live application:** https://chowly-red.vercel.app
 
 ## What it does
 

@@ -22,8 +22,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       select: { id: true, customerId: true, status: true },
     });
     if (!order) return fail("That order does not exist", 404);
-    if (order.status === "PLACED") {
-      return fail("This order has not been prepared yet, so there is nothing to rate", 409);
+    // A rating is a verdict on a meal, so the meal has to have arrived. This
+    // once allowed PREPARING, which let an order be scored while it was still
+    // in the kitchen — the same fault that put ratings on four unserved orders
+    // in the seeded data.
+    if (order.status !== "SERVED" && order.status !== "PAID") {
+      return fail("This order has not been served yet, so there is nothing to rate", 409);
     }
 
     const rating = await prisma.rating.upsert({
