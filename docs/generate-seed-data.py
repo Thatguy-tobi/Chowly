@@ -183,8 +183,8 @@ EMOJI = {
     "House Red": "🍷", "House White": "🥂", "Prosecco": "🥂", "Cabernet Sauvignon": "🍷", "Rose": "🌹",
     "Star Lager": "🍺", "Gulder": "🍺", "Heineken": "🍺", "Trophy": "🍺", "Guinness Stout": "🍺",
     "Fresh Orange Juice": "🍊", "Pineapple Juice": "🍍", "Watermelon Juice": "🍉", "Carrot & Ginger": "🥕", "Mango Juice": "🥭",
-    "Banana Smoothie": "🍌", "Berry Smoothie": "🫐", "Green Smoothie": "🥬", "Mango Smoothie": "🥭", "Avocado Smoothie": "🥑",
-    "Espresso": "☕", "Cappuccino": "☕", "Cafe Latte": "☕", "English Breakfast Tea": "🫖", "Green Tea": "🍵",
+    "Banana Smoothie": "🍌", "Berry Smoothie": "🍓", "Green Smoothie": "🥬", "Mango Smoothie": "🥭", "Avocado Smoothie": "🥑",
+    "Espresso": "☕", "Cappuccino": "☕", "Cafe Latte": "☕", "English Breakfast Tea": "🍵", "Green Tea": "🍵",
 }
 
 FIRST_NAMES = ["Tobi", "David", "Sarah", "Chidi", "Amaka", "Emeka", "Ngozi", "Yusuf", "Aisha", "Femi",

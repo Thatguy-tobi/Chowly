@@ -19,6 +19,15 @@ import { prisma } from "../src/lib/prisma";
  */
 const TEST_CUSTOMER_NAMES = ["FlashTest"];
 
+/**
+ * Orders placed through the interface while testing, which are real records but
+ * not realistic ones. ORD047 was served nine hours after it was placed against
+ * a quote of eleven minutes, because it sat waiting between one test and the
+ * next — on its own it dragged its restaurant's average wait to 164 minutes on
+ * the dashboard, which says more about how it was made than about the service.
+ */
+const TEST_ORDER_REFERENCES = ["ORD047"];
+
 async function main() {
   const apply = process.argv.includes("--apply");
 
@@ -34,6 +43,11 @@ async function main() {
     select: { id: true, firstName: true, orders: { select: { reference: true } } },
   });
 
+  const testOrders = await prisma.customerOrder.findMany({
+    where: { reference: { in: TEST_ORDER_REFERENCES } },
+    select: { id: true, reference: true, orderDate: true, servedAt: true, estimatedWaitTime: true },
+  });
+
   console.log(`Orphaned preparation records: ${orphanedPreps.length}`);
   for (const p of orphanedPreps) console.log(`  ${p.order.reference} (${p.id})`);
 
@@ -41,6 +55,16 @@ async function main() {
   for (const c of testCustomers) {
     console.log(
       `  ${c.firstName} — ${c.orders.length} order(s): ${c.orders.map((o) => o.reference).join(", ") || "none"}`
+    );
+  }
+
+  console.log(`Test orders: ${testOrders.length}`);
+  for (const o of testOrders) {
+    const took = o.servedAt
+      ? Math.round((o.servedAt.getTime() - o.orderDate.getTime()) / 60000)
+      : null;
+    console.log(
+      `  ${o.reference} — quoted ${o.estimatedWaitTime} min, took ${took === null ? "n/a" : `${took} min`}`
     );
   }
 
@@ -61,8 +85,14 @@ async function main() {
     await prisma.customer.delete({ where: { id: c.id } });
   }
 
+  if (testOrders.length) {
+    await prisma.customerOrder.deleteMany({
+      where: { id: { in: testOrders.map((o) => o.id) } },
+    });
+  }
+
   console.log(
-    `\nRemoved ${prepIds.length} preparation record(s) and ${testCustomers.length} test customer(s).`
+    `\nRemoved ${prepIds.length} preparation record(s), ${testCustomers.length} test customer(s) and ${testOrders.length} test order(s).`
   );
 }
 
