@@ -285,7 +285,7 @@ children.push(
     [600, 5026, 3400],
     ["#", "Requirement", "Status"],
     [
-      ["1", "The menu — food and drinks loaded into the database, each item carrying a name, a price and a preparation time", "Done — 236 items across 12 restaurants"],
+      ["1", "The menu — food and drinks loaded into the database, each item carrying a name, a price and a preparation time", "Done — 236 items seeded across 12 restaurants, plus any added since"],
       ["2", "Placing an order — customer selects items, submits, and is shown the order details and waiting time", "Done — ORD048, ₦16,300, quoted 33 min"],
       ["3", "Assigning the order — waiter opens an order, records the chef and bartender, marks it served", "Done — chef and bartender recorded, then served"],
       ["4", "Complaint and rating — both stored against the order", "Done — 4★ with comment, plus a complaint"],
@@ -425,7 +425,7 @@ children.push(
 children.push(Spacer(160));
 children.push(
   Note(
-    "The brief says: where the build forces a change to the model, make the change and say why. All twelve entities above were implemented as designed; the differences are listed below and each one is justified in section 4. Every deviation is also marked in prisma/schema.prisma with the same change number, so the schema and this document can be read against each other."
+    "The brief says: where the build forces a change to the model, make the change and say why. All twelve entities were implemented as designed; the table above lists where the implementation differs, and each difference is justified in section 4. Every deviation is also marked in prisma/schema.prisma with the same change number, so the schema and this document can be read against each other."
   )
 );
 
@@ -449,12 +449,12 @@ children.push(
 );
 children.push(
   P(
-    "The repository is pushed to GitHub and imported into Vercel, which redeploys automatically on every push — so the commit history and the live link stay in step with each other. Two connection strings are held as environment variables: a pooled one used by the running application, and a direct one used for migrations."
+    "Vercel redeploys automatically on every push, so the commit history and the live link stay in step with each other."
   )
 );
 children.push(
   P(
-    "That split is not decoration. Vercel runs the API routes as serverless functions, and each invocation can open its own database connection, which exhausts the connection limit quickly. Neon's pooled endpoint sits in front of the database to absorb that, while schema migrations need the direct endpoint because they cannot run through the pooler. Prisma is configured with both, and 'prisma generate' is bound to the install step so that the generated client cannot go stale against Vercel's dependency cache."
+    "The two connection strings are not duplication. Vercel runs the API routes as serverless functions and each invocation can open its own database connection, which exhausts the limit quickly, so the running application goes through Neon's pooled endpoint. Migrations use the direct endpoint because they cannot run through a pooler at all. Prisma is configured with both."
   )
 );
 
@@ -462,7 +462,7 @@ children.push(
 children.push(H1("4. Decision and change log"));
 children.push(
   P(
-    "Every change to the model or to the shape of the application, with the reason for it. Nothing was written up until the reason for it was confirmed rather than guessed, which is why several entries were left open for days before being completed. Entries 018, 019 and 021 record faults rather than decisions: the brief asks for an honest history, and a log showing only good choices would not be one."
+    "Every change to the model or to the shape of the application, with the reason for it. Nothing was written up until the reason for it was confirmed rather than guessed, which is why several entries were left open for days before being completed. Entries 018, 019, 021, 022, 029, 030, 031 and 032 record faults rather than decisions: the brief asks for an honest history, and a log showing only good choices would not be one."
   )
 );
 children.push(
@@ -649,14 +649,14 @@ children.push(
         "026",
         "7 Sep 2026",
         "Menu search, and loading placeholders shaped like the content",
-        "A restaurant here can carry thirty-four items and the platform holds two hundred and thirty-six, which is more than is reasonable to scroll. Searching spans food and drinks together, because somebody typing the name of a drink should find it without first knowing which tab it lives under. Separately, the spinners were replaced with outlines of the content that is coming: on the deployed site every query crosses to Frankfurt and back, which is long enough for a blank screen to look like a broken one.",
+        "A restaurant here can carry thirty-four items and the platform well over two hundred, which is more than is reasonable to scroll. Searching spans food and drinks together, because somebody typing the name of a drink should find it without first knowing which tab it lives under. Separately, the spinners were replaced with outlines of the content that is coming: on the deployed site every query crosses to Frankfurt and back, which is long enough for a blank screen to look like a broken one.",
         "Confirmed",
       ],
       [
         "027",
         "7 Sep 2026",
         "A dashboard reporting how service is going",
-        "Beyond the brief. Twelve entities are worth little if nothing ever reads across them, so this joins orders, items, staff, ratings, complaints and payments into figures a manager would actually ask for: takings against money still owed, actual waits against quoted ones, how many orders beat their quote, the spread of ratings, and the same broken down per restaurant. It is deliberately group-wide — around fifty orders across twelve restaurants means any single one is four rows and a lot of white space. It also earned its place immediately by exposing change 022.",
+        "Beyond the brief. Twelve entities are worth little if nothing ever reads across them, so this joins orders, items, staff, ratings, complaints and payments into figures a manager would actually ask for: takings against money still owed, actual waits against quoted ones, how many orders beat their quote, the spread of ratings, and the same broken down per restaurant. It is deliberately group-wide — around fifty orders across a dozen or more restaurants means any single one is four rows and a lot of white space. It also earned its place immediately by exposing change 022.",
         "Confirmed",
       ],
       [
@@ -684,7 +684,7 @@ children.push(
         "031",
         "7 Sep 2026",
         "Sample orders meant to be on time are actually on time, and 3-star ratings exist",
-        "Two artefacts of the generator that the dashboard made visible. Orders not deliberately delayed were given a margin of minus four to plus three minutes, so about half of them drifted a minute or two past the quote and the group reported 14% served on time — a figure that reads as a broken application rather than as pessimistic sample data. Ratings were scored one to two after a complaint and four to five otherwise, which left a permanent gap in the middle of the chart that looked like a fault in the rating feature. Now 39% on time, and three stars occur. The remaining severity is genuine: at least twenty complaints across forty-five orders was the requirement, so roughly half of them go wrong by design, and the average rating follows from that rather than from a defect.",
+        "Two artefacts of the generator that the dashboard made visible. Orders not deliberately delayed were given a margin of minus four to plus three minutes, so about half of them drifted a minute or two past the quote and the group reported 14% served on time — a figure that reads as a broken application rather than as pessimistic sample data. Ratings were scored one to two after a complaint and four to five otherwise, which left a permanent gap in the middle of the chart that looked like a fault in the rating feature. Now around two in five are served within the quote, and three stars occur. The remaining severity is genuine: at least twenty complaints across forty-five orders was the requirement, so roughly half of them go wrong by design, and the average rating follows from that rather than from a defect.",
         "Confirmed",
       ],
       [
@@ -892,10 +892,10 @@ children.push(
   ],
   [
     "6.7  How service is going (beyond the brief)",
-    "The twelve restaurants read together — takings, waits against what was quoted, ratings, and complaints.",
+    "The restaurants read together — takings, waits against what was quoted, ratings, and complaints.",
     [
       "Every figure is computed from the database rather than assembled from whatever the browser had loaded. Takings are the sum of payments actually recorded, not of order totals, because an unpaid order is money owed rather than money taken — the two are reported separately.",
-      "It is deliberately group-wide with a per-restaurant table underneath. Around fifty orders spread across twelve restaurants means any single restaurant is four rows and a lot of white space; read together they say something. The same view breaks down to a single restaurant in the table below.",
+      "It is deliberately group-wide with a per-restaurant table underneath. Around fifty orders spread across a dozen or more restaurants means any single restaurant is four rows and a lot of white space; read together they say something. The same view breaks down to a single restaurant in the table below.",
       "This screen earned its place immediately by making change 022 visible: a reported average wait of 231 minutes against 26 quoted was what exposed that served orders had never recorded when they were served.",
     ],
     [
@@ -929,7 +929,7 @@ children.push(
 
 children.push(H2("As the customer"));
 [
-  "Pick a restaurant from the twelve listed. Terra Kulture is a good one to try.",
+  "Pick a restaurant from the list. Terra Kulture is a good one to try.",
   "Type any first name and any table number, then press “Start ordering”. That is the whole sign-in — the name and table are what let a waiter bring food to the right person.",
   "Add a dish from the Food tab and a drink from the Drinks tab. Each item shows its price and how long it takes to prepare.",
   "Press “Review order”. The total and the estimated wait are shown. The wait is not the two preparation times added together, because the kitchen and the bar work at the same time — it is whichever of them takes longer.",
@@ -941,8 +941,8 @@ children.push(H2("As the waiter"));
   "At the top of the screen there is a switch reading customer / waiter. Press “waiter”. There is no login: the same person can be both, which is what the brief asks for.",
   "You are now looking at the kitchen queue for that restaurant. The order you just placed is in it, along with the orders already in the system. Anything running past its quoted time is flagged.",
   "Open your order. It is split into what the kitchen owes and what the bar owes.",
-  "Choose a chef and a bartender from the restaurant's staff, then press “Record preparation”. The order moves to Preparing.",
-  "Press “Mark as served”. Note that this button is disabled until a chef and bartender have been recorded — the order cannot be served by someone unnamed.",
+  "Choose a chef and a bartender from the restaurant's staff, then press “Record preparation”. The order moves to Preparing. Only the roles the order actually needs are offered — a drinks-only order asks for no chef.",
+  "Press “Mark as served”. Note that this button is disabled until preparation has been recorded — the order cannot be served by someone unnamed.",
 ].forEach((t) => children.push(Step(t, 1)));
 
 children.push(H2("Back as the customer"));
@@ -974,7 +974,7 @@ children.push(H2("Things worth trying"));
 
 // 8. Open questions
 children.push(H1("8. Open questions"));
-children.push(P("Still outstanding. Resolved questions move into the change log in section 4 with the reason attached."));
+children.push(P("Questions raised during the build and not yet answered. Once resolved they move into the change log in section 4 with the reason attached."));
 children.push(Bullet("None outstanding. Every question raised so far has been resolved and recorded in section 4."));
 
 // ---------- document ----------
