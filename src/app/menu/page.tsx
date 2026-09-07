@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { useCart } from "@/lib/cart";
 import { naira, minutes } from "@/lib/format";
-import { Badge, Button, EmptyState, ErrorNote, Spinner } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorNote, MenuSkeleton, inputClass } from "@/components/ui";
 
 type Item = {
   id: string;
@@ -40,6 +40,7 @@ export default function MenuPage() {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [tab, setTab] = useState<"FOOD" | "DRINK">("FOOD");
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const restaurantId = session.customer.restaurantId;
 
@@ -62,7 +63,7 @@ export default function MenuPage() {
       .catch((e) => setError(e.message));
   }, [ready, restaurantId, session.customer.customerId, session.customer.tableNumber, router]);
 
-  if (!ready || (!menu && !error)) return <Spinner label="Loading the menu" />;
+  if (!ready || (!menu && !error)) return <MenuSkeleton />;
   if (error) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8">
@@ -72,7 +73,25 @@ export default function MenuPage() {
   }
   if (!menu) return null;
 
-  const categories = tab === "FOOD" ? menu.food : menu.drinks;
+  // Searching looks across both tabs, because somebody typing "chapman" should
+  // find it whether or not they are currently looking at the drinks. Matching is
+  // on the name and the description, since a description often carries the word
+  // the customer actually knows the dish by.
+  const q = query.trim().toLowerCase();
+  const source = q ? [...menu.food, ...menu.drinks] : tab === "FOOD" ? menu.food : menu.drinks;
+  const categories = q
+    ? source
+        .map((c) => ({
+          ...c,
+          items: c.items.filter(
+            (i) =>
+              i.name.toLowerCase().includes(q) ||
+              (i.description ?? "").toLowerCase().includes(q)
+          ),
+        }))
+        .filter((c) => c.items.length > 0)
+    : source;
+  const matchCount = categories.reduce((n, c) => n + c.items.length, 0);
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 pb-32">
@@ -88,33 +107,72 @@ export default function MenuPage() {
         </Link>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Menu sections"
-        className="sticky top-[57px] z-20 -mx-4 mt-5 flex gap-1 bg-surface/90 px-4 py-2 backdrop-blur-md"
-      >
-        {(["FOOD", "DRINK"] as const).map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              tab === t
-                ? "bg-accent text-on-accent"
-                : "bg-surface-sunken text-ink-soft hover:text-ink"
-            }`}
+      <div className="sticky top-[57px] z-20 -mx-4 mt-5 bg-surface/90 px-4 py-2 backdrop-blur-md">
+        <div className="relative">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${menu.itemCount} dishes and drinks`}
+            aria-label="Search the menu"
+            className={`${inputClass} py-2.5 pl-10`}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
           >
-            {t === "FOOD" ? "Food" : "Drinks"}
-          </button>
-        ))}
+            🔍
+          </span>
+        </div>
+
+        {/* The tabs are meaningless while searching, because a search spans
+            both of them — so they step aside and report the result instead. */}
+        {q ? (
+          <p className="mt-2 text-sm text-ink-soft" role="status">
+            {matchCount === 0
+              ? "Nothing matches that"
+              : `${matchCount} match${matchCount === 1 ? "" : "es"} across food and drinks`}
+          </p>
+        ) : (
+          <div role="tablist" aria-label="Menu sections" className="mt-2 flex gap-1">
+            {(["FOOD", "DRINK"] as const).map((t) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  tab === t
+                    ? "bg-accent text-on-accent"
+                    : "bg-surface-sunken text-ink-soft hover:text-ink"
+                }`}
+              >
+                {t === "FOOD" ? "Food" : "Drinks"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {categories.length === 0 ? (
-        <EmptyState icon="🍽️" title="Nothing here yet">
-          This restaurant has no {tab === "FOOD" ? "food" : "drinks"} on its menu
-          right now.
-        </EmptyState>
+        q ? (
+          <EmptyState
+            icon="🔍"
+            title="Nothing matches that"
+            action={
+              <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
+                Clear the search
+              </Button>
+            }
+          >
+            No dish or drink here is called “{query.trim()}”.
+          </EmptyState>
+        ) : (
+          <EmptyState icon="🍽️" title="Nothing here yet">
+            This restaurant has no {tab === "FOOD" ? "food" : "drinks"} on its menu
+            right now.
+          </EmptyState>
+        )
       ) : (
         <div className="mt-4 flex flex-col gap-7">
           {categories.map((category) => (

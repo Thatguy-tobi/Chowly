@@ -11,7 +11,7 @@ import {
   Card,
   ErrorNote,
   Field,
-  Spinner,
+  OrderSkeleton,
   inputClass,
 } from "@/components/ui";
 
@@ -88,7 +88,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       </div>
     );
   }
-  if (!order) return <Spinner label="Loading your order" />;
+  if (!order) return <OrderSkeleton />;
 
   // Rating waits for the meal; complaining does not. Someone whose order is
   // late is complaining precisely because it has not arrived.

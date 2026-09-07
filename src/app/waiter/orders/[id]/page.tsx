@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { naira, minutes, clockTime, dateAndTime, staffName } from "@/lib/format";
 import { waitProgress } from "@/lib/wait-time";
-import { Badge, Button, ButtonLink, Card, ErrorNote, Spinner } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, ErrorNote, OrderSkeleton } from "@/components/ui";
 
 type Status = "PLACED" | "PREPARING" | "SERVED" | "PAID";
 
@@ -109,7 +109,7 @@ export default function WaiterOrderPage({ params }: { params: Promise<{ id: stri
       </div>
     );
   }
-  if (!order) return <Spinner label="Loading the order" />;
+  if (!order) return <OrderSkeleton />;
 
   const food = order.items.filter((l) => l.item.category.type === "FOOD");
   const drinks = order.items.filter((l) => l.item.category.type === "DRINK");

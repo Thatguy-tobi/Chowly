@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { naira, minutes, clockTime } from "@/lib/format";
 import { waitProgress } from "@/lib/wait-time";
-import { Badge, EmptyState, ErrorNote, Spinner } from "@/components/ui";
+import { Badge, EmptyState, ErrorNote, QueueSkeleton } from "@/components/ui";
 
 type Status = "PLACED" | "PREPARING" | "SERVED" | "PAID";
 
@@ -88,7 +88,7 @@ export default function WaiterQueuePage() {
     };
   }, [orders]);
 
-  if (!ready || (!orders && !error)) return <Spinner label="Loading the queue" />;
+  if (!ready || (!orders && !error)) return <QueueSkeleton />;
   if (error) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8">
