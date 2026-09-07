@@ -637,6 +637,13 @@ children.push(
         "Two artefacts of the generator that the dashboard made visible. Orders not deliberately delayed were given a margin of minus four to plus three minutes, so about half of them drifted a minute or two past the quote and the group reported 14% served on time — a figure that reads as a broken application rather than as pessimistic sample data. Ratings were scored one to two after a complaint and four to five otherwise, which left a permanent gap in the middle of the chart that looked like a fault in the rating feature. Now 39% on time, and three stars occur. The remaining severity is genuine: at least twenty complaints across forty-five orders was the requirement, so roughly half of them go wrong by design, and the average rating follows from that rather than from a defect.",
         "Confirmed",
       ],
+      [
+        "032",
+        "7 Sep 2026",
+        "The dashboard and the admin pages are reachable from every page",
+        "Both had been built, described as finished and written into the walkthrough in section 7 while being reachable only by typing the address — the only links to the admin pages were inside the admin pages. Anyone following that walkthrough would have had to guess the URL. They are now in the footer, which the root layout puts on every screen, and the two link across to each other. Recorded because the fault was not in either feature but in never having asked whether anybody could find them.",
+        "Confirmed",
+      ],
     ],
     { statusCol: 4, boldCol: 0 }
   )
@@ -878,8 +885,8 @@ children.push(
   )
 );
 [
-  "Open /dashboard, or follow “How service is going” from the waiter's queue. It reports the twelve restaurants together: takings against money still owed, how long orders actually took against what was quoted, the spread of ratings, and the same broken down per restaurant.",
-  "Open /admin. Add a restaurant, give it a menu, put an item on it with a price and a preparation time, and hire a waiter. Then switch to the customer view — the restaurant now appears in the list and you can order the dish you just created. Until it has both a waiter and an item it is shown as not taking orders yet, because without either the order would be refused.",
+  "Follow “How service is going” at the foot of any page. It reports the restaurants together: takings against money still owed, how long orders actually took against what was quoted, the spread of ratings, and the same broken down per restaurant.",
+  "Follow “Manage restaurants” at the foot of any page. Add a restaurant, give it a menu, put an item on it with a price and a preparation time, and hire a waiter. Then go back to the start — the restaurant now appears in the list and you can order the dish you just created. Until it has both a waiter and an item it is shown as not taking orders yet, because without either the order would be refused.",
 ].forEach((t) => children.push(Step(t, 3)));
 
 children.push(H2("Things worth trying"));
