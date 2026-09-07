@@ -72,9 +72,14 @@ export default function DashboardPage() {
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="font-display text-2xl text-ink">How service is going</h1>
-        <Link href="/waiter" className="shrink-0 text-sm text-accent hover:underline">
-          Back to orders
-        </Link>
+        <div className="flex shrink-0 gap-3 text-sm">
+          <Link href="/admin" className="text-accent hover:underline">
+            Restaurants
+          </Link>
+          <Link href="/waiter" className="text-accent hover:underline">
+            Orders
+          </Link>
+        </div>
       </div>
       <p className="mt-1 text-sm text-ink-soft">
         Across all {stats.restaurantCount} restaurants · {g.orders} orders

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import { Instrument_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/lib/session";
@@ -58,9 +59,26 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <CartProvider>
             <Header />
             <main className="flex-1 w-full">{children}</main>
+            {/*
+              The way in to the two screens the brief does not ask for. They
+              were previously reachable only by typing the address, which meant
+              nobody would ever find them. The footer is on every page, and is
+              where a staff-facing link belongs without competing with the
+              customer/waiter switch at the top.
+            */}
             <footer className="mx-auto w-full max-w-2xl px-4 pb-10 pt-8 text-center text-xs text-ink-faint">
-              Chowly · a TeSA Africa build assignment · payments on this site are
-              simulated
+              <nav className="flex items-center justify-center gap-4">
+                <Link href="/dashboard" className="hover:text-ink-soft hover:underline">
+                  How service is going
+                </Link>
+                <Link href="/admin" className="hover:text-ink-soft hover:underline">
+                  Manage restaurants
+                </Link>
+              </nav>
+              <p className="mt-3">
+                Chowly · a TeSA Africa build assignment · payments on this site
+                are simulated
+              </p>
             </footer>
           </CartProvider>
         </SessionProvider>
