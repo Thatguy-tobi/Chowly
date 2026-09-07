@@ -12,6 +12,9 @@ type Restaurant = {
   openingTime: string;
   closingTime: string;
   _count: { menus: number; staff: number };
+  itemCount: number;
+  /** False when the restaurant has no waiter, or nothing on an active menu. */
+  canTakeOrders: boolean;
 };
 
 /**
@@ -113,27 +116,36 @@ export default function LandingPage() {
         <div className="grid gap-2 sm:grid-cols-2">
           {restaurants?.map((r) => {
             const selected = r.id === chosen;
+            // A restaurant with no waiter, or nothing on its menu, cannot
+            // complete an order. Offering it anyway would let someone browse
+            // and choose dishes only to be refused at the checkout.
+            const closed = !r.canTakeOrders;
             return (
               <button
                 key={r.id}
-                onClick={() => setChosen(r.id)}
+                onClick={() => !closed && setChosen(r.id)}
                 aria-pressed={selected}
+                disabled={closed}
                 className={`rounded-2xl border p-4 text-left transition ${
-                  selected
-                    ? "border-accent bg-accent-soft"
-                    : "border-border-subtle bg-surface-raised hover:border-border-strong"
+                  closed
+                    ? "cursor-not-allowed border-border-subtle bg-surface-sunken opacity-70"
+                    : selected
+                      ? "border-accent bg-accent-soft"
+                      : "border-border-subtle bg-surface-raised hover:border-border-strong"
                 }`}
               >
                 <span
                   className={`block font-display text-base ${
-                    selected ? "text-accent" : "text-ink"
+                    selected && !closed ? "text-accent" : "text-ink"
                   }`}
                 >
                   {r.name}
                 </span>
                 <span className="mt-0.5 block text-xs text-ink-soft">{r.address}</span>
                 <span className="mt-2 block text-xs text-ink-faint">
-                  {r.openingTime}–{r.closingTime} · {r._count.staff} staff
+                  {closed
+                    ? "Not taking orders yet"
+                    : `${r.openingTime}–${r.closingTime} · ${r.itemCount} on the menu`}
                 </span>
               </button>
             );

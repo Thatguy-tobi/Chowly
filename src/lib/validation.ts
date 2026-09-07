@@ -53,6 +53,58 @@ export const resolveComplaintSchema = z.object({
   status: z.enum(["OPEN", "RESOLVED"]),
 });
 
+/* ------------------------------------------------------------------ admin */
+
+// "HH:mm" on a 24-hour clock. Opening hours describe a time of day that repeats
+// rather than a moment in time (change 011), so they are validated as text in
+// that shape instead of being parsed into a date.
+const clockTime = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use a 24-hour time such as 09:00 or 22:30");
+
+export const createRestaurantSchema = z.object({
+  name: z.string().trim().min(2, "Give the restaurant a name").max(80),
+  address: z.string().trim().min(5, "Give the restaurant an address").max(160),
+  phone: z.string().trim().min(7, "That phone number looks too short").max(20),
+  email: z.email("That does not look like an email address"),
+  openingTime: clockTime,
+  closingTime: clockTime,
+});
+
+export const createStaffSchema = z.object({
+  restaurantId: z.string().min(1),
+  firstName: z.string().trim().min(2, "Give the staff member a first name").max(40),
+  lastName: z.string().trim().min(2, "Give the staff member a surname").max(40),
+  phone: z.string().trim().min(7, "That phone number looks too short").max(20),
+  role: z.enum(["WAITER", "CHEF", "BARTENDER"]),
+});
+
+export const createMenuSchema = z.object({
+  restaurantId: z.string().min(1),
+  name: z.string().trim().min(2, "Give the menu a name").max(80),
+  description: z.string().trim().max(300).optional().nullable(),
+});
+
+export const createMenuItemSchema = z.object({
+  menuId: z.string().min(1),
+  categoryId: z.string().min(1, "Choose a category"),
+  name: z.string().trim().min(2, "Give the item a name").max(80),
+  description: z.string().trim().max(300).optional().nullable(),
+  // Whole naira. Every price in this application is an integer, so the
+  // arithmetic in an order stays exact.
+  price: z
+    .number({ error: "Enter a price" })
+    .int("Prices are whole naira")
+    .min(1, "A price must be more than nothing")
+    .max(10_000_000),
+  preparationTimeMinutes: z
+    .number({ error: "Enter how long this takes to prepare" })
+    .int()
+    .min(1, "Preparation time must be at least a minute")
+    .max(240, "Over four hours is not a menu item"),
+  emoji: z.string().trim().max(8).optional().nullable(),
+});
+
 export const createRatingSchema = z.object({
   value: z.number().int().min(1, "Rating must be 1 to 5").max(5, "Rating must be 1 to 5"),
   comment: z.string().trim().max(500).optional().nullable(),
